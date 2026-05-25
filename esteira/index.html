@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnóstico Comercial — Sistema Operacional Comercial</title>
+  <style>
+    :root {
+      --bg:       #08090b;
+      --bg2:      #0f1115;
+      --bg3:      #16191f;
+      --bg4:      #1e2128;
+      --gold:     #c9a55a;
+      --gold2:    #e8c97a;
+      --gold3:    #f5dfa0;
+      --text:     #e4e6ea;
+      --muted:    #6b7280;
+      --border:   #23272f;
+      --red:      #e05555;
+      --yellow:   #e0b544;
+      --green:    #4caf7d;
+      --radius:   12px;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* ─── SCREENS ─── */
+    .screen {
+      display: none;
+      width: 100%;
+      max-width: 680px;
+      animation: fadeUp .45s ease;
+    }
+    .screen.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(24px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+
+    /* ─── INTRO ─── */
+    .intro-logo {
+      font-size: 11px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .intro-logo::before {
+      content:'';
+      display:inline-block;
+      width:28px; height:1px;
+      background: var(--gold);
+    }
+
+    .intro-title {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      letter-spacing: -1px;
+    }
+    .intro-title span { color: var(--gold); }
+
+    .intro-sub {
+      font-size: 17px;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 48px;
+      max-width: 520px;
+    }
+
+    .intro-stats {
+      display: flex;
+      gap: 32px;
+      margin-bottom: 48px;
+      padding: 24px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat { flex:1; }
+    .stat-num {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ─── FORM ─── */
+    .form-group { margin-bottom: 20px; }
+    label {
+      display: block;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    input, select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      outline: none;
+      transition: border-color .2s;
+    }
+    input:focus, select:focus {
+      border-color: var(--gold);
+    }
+    input::placeholder { color: var(--muted); }
+    select option { background: var(--bg3); }
+
+    /* ─── BUTTONS ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 32px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+    }
+    .btn-primary:hover {
+      background: var(--gold2);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+    .btn svg { width:18px; height:18px; }
+
+    /* ─── PROGRESS ─── */
+    .progress-wrap {
+      margin-bottom: 36px;
+    }
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .progress-label {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .progress-count {
+      font-size: 12px;
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .progress-bar {
+      height: 3px;
+      background: var(--bg4);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      border-radius: 2px;
+      transition: width .5s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* ─── QUESTION ─── */
+    .question-num {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+    .question-text {
+      font-size: clamp(20px, 3vw, 26px);
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+    .question-hint {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+
+    /* ─── OPTIONS ─── */
+    .options { display: flex; flex-direction: column; gap: 12px; }
+
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all .18s;
+      user-select: none;
+    }
+    .option:hover {
+      border-color: var(--gold);
+      background: var(--bg3);
+      transform: translateX(4px);
+    }
+    .option.selected {
+      border-color: var(--gold);
+      background: rgba(201,165,90,.1);
+    }
+    .option-letter {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--bg4);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      flex-shrink: 0;
+      transition: all .18s;
+    }
+    .option.selected .option-letter {
+      background: var(--gold);
+      border-color: var(--gold);
+      color: #000;
+    }
+    .option-text {
+      font-size: 15px;
+      line-height: 1.4;
+    }
+
+    /* ─── FEEDBACK TOAST ─── */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--bg4);
+      border: 1px solid var(--border);
+      padding: 12px 22px;
+      border-radius: 50px;
+      font-size: 13px;
+      color: var(--muted);
+      opacity: 0;
+      transition: all .3s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 999;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ─── NAV ─── */
+    .question-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 32px;
+    }
+
+    /* ─── LOADING ─── */
+    .loading-center {
+      text-align: center;
+      padding: 80px 20px;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 2px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 32px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .loading-sub {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .loading-steps {
+      margin-top: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-start;
+      max-width: 320px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .loading-step {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      transition: opacity .4s;
+    }
+    .loading-step.visible { opacity: 1; }
+    .loading-step::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      flex-shrink: 0;
+    }
+
+    /* ─── REPORT ─── */
+    .report-header {
+      padding: 36px 40px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .report-header::before {
+      content:'';
+      position: absolute;
+      top:0; left:0; right:0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+    }
+    .report-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .report-company {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .report-date {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+    .report-title {
+      font-size: clamp(22px, 3vw, 28px);
+      font-weight: 700;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+    .tier-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 50px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .tier-critica { background: rgba(224,85,85,.15); color: var(--red); border: 1px solid rgba(224,85,85,.3); }
+    .tier-risco   { background: rgba(224,181,68,.15); color: var(--yellow); border: 1px solid rgba(224,181,68,.3); }
+    .tier-ok      { background: rgba(76,175,125,.15); color: var(--green); border: 1px solid rgba(76,175,125,.3); }
+    .report-tier-desc {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 520px;
+    }
+
+    /* KPI grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+    }
+    .kpi-card.danger { border-color: rgba(224,85,85,.3); }
+    .kpi-card.warn   { border-color: rgba(224,181,68,.25); }
+    .kpi-card.good   { border-color: rgba(76,175,125,.25); }
+    .kpi-label {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .kpi-value {
+      font-size: clamp(22px, 4vw, 32px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .kpi-value.red    { color: var(--red); }
+    .kpi-value.yellow { color: var(--yellow); }
+    .kpi-value.green  { color: var(--green); }
+    .kpi-value.gold   { color: var(--gold); }
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* Section block */
+    .report-block {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+    .block-title {
+      font-size: 11px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .block-title::after {
+      content:'';
+      flex:1;
+      height:1px;
+      background: var(--border);
+    }
+
+    /* Dimension scores */
+    .dim-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .dim-row:last-child { margin-bottom: 0; }
+    .dim-name {
+      font-size: 13px;
+      font-weight: 500;
+      width: 140px;
+      flex-shrink: 0;
+    }
+    .dim-track {
+      flex: 1;
+      height: 6px;
+      background: var(--bg4);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .dim-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 1.2s cubic-bezier(.4,0,.2,1);
+    }
+    .dim-fill.red    { background: var(--red); }
+    .dim-fill.yellow { background: var(--yellow); }
+    .dim-fill.green  { background: var(--green); }
+    .dim-score {
+      font-size: 12px;
+      font-weight: 700;
+      width: 60px;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .dim-score.red    { color: var(--red); }
+    .dim-score.yellow { color: var(--yellow); }
+    .dim-score.green  { color: var(--green); }
+
+    /* Gap cards */
+    .gap-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .gap-card:last-child { margin-bottom: 0; }
+    .gap-card.severity-alta   { border-left: 3px solid var(--red); }
+    .gap-card.severity-media  { border-left: 3px solid var(--yellow); }
+    .gap-card.severity-baixa  { border-left: 3px solid var(--green); }
+    .gap-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .gap-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .gap-icon2 {
+      font-size: 18px;
+      line-height: 1;
+    }
+    .gap-name2 {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .severity-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 50px;
+      flex-shrink: 0;
+    }
+    .severity-badge.alta  { background: rgba(224,85,85,.15); color: var(--red); }
+    .severity-badge.media { background: rgba(224,181,68,.15); color: var(--yellow); }
+    .gap-loss-tag {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 10px;
+    }
+    .gap-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .gap-state {
+      background: var(--bg3);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .gap-state-label {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .gap-state-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .gap-solve2 {
+      font-size: 13px;
+      color: var(--gold);
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .gap-solve2 strong { color: var(--gold2); }
+
+    /* Benchmark table */
+    .bench-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .bench-table th {
+      text-align: left;
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .bench-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .bench-table tr:last-child td { border-bottom: none; }
+    .bench-table tr:hover td { background: var(--bg3); }
+    .check { color: var(--green); font-weight: 700; }
+    .cross { color: var(--red); }
+    .partial { color: var(--yellow); }
+    .highlight-col { background: rgba(201,165,90,.06); }
+
+    /* ROI projection */
+    .roi-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .roi-box {
+      background: var(--bg3);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+    .roi-box-label {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .roi-box-val {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 4px;
+    }
+    .roi-box-sub { font-size: 12px; color: var(--muted); }
+    .roi-delta {
+      text-align: center;
+      padding: 16px;
+      background: rgba(76,175,125,.08);
+      border: 1px solid rgba(76,175,125,.2);
+      border-radius: var(--radius);
+    }
+    .roi-delta-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .roi-delta-val { font-size: 32px; font-weight: 800; color: var(--green); letter-spacing: -1px; }
+
+    /* Action plan */
+    .phase {
+      display: flex;
+      gap: 16px;
+      padding: 20px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .phase:last-child { border-bottom: none; padding-bottom: 0; }
+    .phase-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--bg4);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+    .phase-content {}
+    .phase-period {
+      font-size: 11px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 4px;
+    }
+    .phase-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .phase-items {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .phase-items li {
+      font-size: 13px;
+      color: var(--muted);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .phase-items li::before {
+      content:'→';
+      color: var(--gold);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* CTA */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(201,165,90,.1), rgba(201,165,90,.04));
+      border: 1px solid rgba(201,165,90,.3);
+      border-radius: var(--radius);
+      padding: 36px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .cta-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .cta-sub {
+      font-size: 15px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .cta-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .divider { height: 1px; background: var(--border); margin: 32px 0; }
+
+    @media (max-width: 600px) {
+      .intro-stats { flex-direction: column; gap: 20px; }
+      .kpi-grid { grid-template-columns: 1fr 1fr; }
+      .gap-body { grid-template-columns: 1fr; }
+      .roi-row { grid-template-columns: 1fr; }
+      .bench-table th:nth-child(3),
+      .bench-table td:nth-child(3) { display: none; }
+      .cta-buttons { flex-direction: column; }
+      .btn { width: 100%; justify-content: center; }
+      .dim-name { width: 100px; font-size: 12px; }
+      .cta-form-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SCREEN: INTRO -->
+<div class="screen active" id="screen-intro">
+  <div class="intro-logo">Sistema Operacional Comercial</div>
+  <h1 class="intro-title">
+    Quanto sua empresa<br>está <span>perdendo</span><br>por mês?
+  </h1>
+  <p class="intro-sub">
+    10 perguntas. 3 minutos. Um diagnóstico real da sua operação comercial — com o número exato de receita que está vazando hoje.
+  </p>
+  <div class="intro-stats">
+    <div class="stat">
+      <div class="stat-num">87%</div>
+      <div class="stat-label">das imobiliárias perdem leads por resposta lenta</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">73%</div>
+      <div class="stat-label">dos leads some após o primeiro contato sem follow-up</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num">R$0</div>
+      <div class="stat-label">custo do diagnóstico — gratuito e sem compromisso</div>
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="startDiag()">
+    Iniciar diagnóstico
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </button>
+</div>
+
+<!-- SCREEN: INFO -->
+<div class="screen" id="screen-info">
+  <div class="intro-logo">Diagnóstico Comercial</div>
+  <h2 style="font-size:26px;font-weight:700;margin-bottom:8px;letter-spacing:-0.5px;">Antes de começar</h2>
+  <p style="color:var(--muted);font-size:15px;margin-bottom:36px;line-height:1.6;">O relatório final será personalizado com os dados da sua empresa.</p>
+
+  <div class="form-group">
+    <label>Nome da empresa</label>
+    <input type="text" id="company-name" placeholder="Ex: Construtora Horizonte" />
+  </div>
+  <div class="form-group">
+    <label>Segmento</label>
+    <select id="company-segment">
+      <option value="">Selecione o segmento</option>
+      <option value="imobiliaria">Imobiliária</option>
+      <option value="construtora">Construtora / Incorporadora</option>
+      <option value="corretor">Corretor autônomo</option>
+      <option value="outro">Outro segmento</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Nome (opcional)</label>
+    <input type="text" id="user-name" placeholder="Seu nome" />
+  </div>
+
+  <div style="display:flex;gap:12px;margin-top:8px;">
+    <button class="btn btn-outline" onclick="showScreen('screen-intro')">Voltar</button>
+    <button class="btn btn-primary" onclick="startQuestions()">
+      Começar
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- SCREEN: QUESTION -->
+<div class="screen" id="screen-question">
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <span class="progress-label">Diagnóstico em andamento</span>
+      <span class="progress-count" id="q-count">1 / 10</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="q-progress" style="width:10%"></div>
+    </div>
+  </div>
+
+  <div id="q-num" class="question-num">Pergunta 01</div>
+  <h2 class="question-text" id="q-text"></h2>
+  <p class="question-hint" id="q-hint"></p>
+  <div class="options" id="q-options"></div>
+
+  <div class="question-nav">
+    <button class="btn btn-outline" id="btn-back" onclick="prevQuestion()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Anterior
+    </button>
+    <div></div>
+    <button class="btn btn-primary" id="btn-next" onclick="nextQuestion()" disabled>
+      Próxima
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- SCREEN: LOADING -->
+<div class="screen" id="screen-loading">
+  <div class="loading-center">
+    <div class="spinner"></div>
+    <div class="loading-text">Analisando sua operação...</div>
+    <div class="loading-sub">Calculando receita em risco com base nas suas respostas</div>
+    <div class="loading-steps">
+      <div class="loading-step" id="step-1">Identificando gaps operacionais</div>
+      <div class="loading-step" id="step-2">Calculando taxa de perda de leads</div>
+      <div class="loading-step" id="step-3">Estimando VGV em risco por mês</div>
+      <div class="loading-step" id="step-4">Gerando diagnóstico personalizado</div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN: REPORT -->
+<div class="screen" id="screen-report">
+
+  <!-- HEADER -->
+  <div class="report-header">
+    <div class="report-meta">
+      <div class="report-company" id="r-company">—</div>
+      <div class="report-date" id="r-date">—</div>
+    </div>
+    <div class="report-title" id="r-title">Diagnóstico da Operação Comercial</div>
+    <div class="tier-badge" id="r-tier-badge">—</div>
+    <p class="report-tier-desc" id="r-tier-desc"></p>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="r-kpis"></div>
+
+  <!-- DIMENSÕES -->
+  <div class="report-block">
+    <div class="block-title">Maturidade por dimensão</div>
+    <div id="r-dimensions"></div>
+  </div>
+
+  <!-- GAPS DETALHADOS -->
+  <div class="report-block">
+    <div class="block-title">Análise de gaps críticos</div>
+    <div id="r-gaps"></div>
+  </div>
+
+  <!-- BENCHMARK -->
+  <div class="report-block">
+    <div class="block-title">Benchmark competitivo</div>
+    <div id="r-benchmark"></div>
+  </div>
+
+  <!-- ROI -->
+  <div class="report-block">
+    <div class="block-title">Projeção de recuperação de receita</div>
+    <div id="r-roi"></div>
+  </div>
+
+  <!-- PLANO DE AÇÃO -->
+  <div class="report-block">
+    <div class="block-title">Plano de ação recomendado</div>
+    <div id="r-plan"></div>
+  </div>
+
+  <!-- CTA AGENDAR -->
+  <div class="cta-section" id="cta-agendar">
+    <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px;">Diagnóstico Completo — Gratuito</div>
+    <div class="cta-title">Quer ver esse diagnóstico<br>aplicado ao vivo na sua empresa?</div>
+    <p class="cta-sub">
+      Em 45 minutos fazemos o diagnóstico completo da sua operação — com o sistema rodando ao vivo, os seus dados reais, e o cronograma de implantação na mesa.
+    </p>
+
+    <div id="cta-form-wrap">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;" class="cta-form-grid">
+        <div class="form-group" style="margin-bottom:0">
+          <label>Seu nome</label>
+          <input type="text" id="cta-nome" placeholder="Nome completo" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>WhatsApp</label>
+          <input type="tel" id="cta-whatsapp" placeholder="(00) 00000-0000" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Melhor horário para contato</label>
+        <select id="cta-horario">
+          <option value="">Selecione</option>
+          <option value="manha">Manhã (8h–12h)</option>
+          <option value="tarde">Tarde (12h–18h)</option>
+          <option value="noite">Noite (18h–21h)</option>
+          <option value="qualquer">Qualquer horário</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:18px;font-size:16px;" onclick="enviarAgendamento()">
+        Agendar diagnóstico completo
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+      <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:12px;">Sem compromisso. Resposta em até 2 horas úteis.</p>
+    </div>
+
+    <div id="cta-sucesso" style="display:none;text-align:center;padding:20px 0;">
+      <div style="font-size:40px;margin-bottom:16px;">✓</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px;" id="cta-sucesso-nome">Agendamento confirmado</div>
+      <p style="color:var(--muted);font-size:14px;line-height:1.6;">Recebemos sua solicitação. Entraremos em contato pelo WhatsApp informado em até 2 horas úteis para confirmar o horário do diagnóstico.</p>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:20px 0 8px;">
+    <button class="btn btn-outline" style="font-size:13px;padding:10px 20px;" onclick="resetDiag()">Refazer diagnóstico</button>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+const state = {
+  company: '',
+  segment: '',
+  userName: '',
+  answers: [],       // { questionIndex, optionIndex, score, value }
+  currentQ: 0,
+};
+
+// ─── QUESTIONS ───────────────────────────────────────────
+const QUESTIONS = [
+  {
+    text: "Quantos leads sua empresa recebe por mês?",
+    hint: "Considere todos os canais: WhatsApp, portais, anúncios, indicação.",
+    type: "data",
+    dataKey: "leads",
+    options: [
+      { text: "Menos de 50 leads",          score: 0, value: 35  },
+      { text: "Entre 50 e 150 leads",        score: 0, value: 100 },
+      { text: "Entre 150 e 300 leads",       score: 0, value: 225 },
+      { text: "Mais de 300 leads",           score: 0, value: 400 },
+    ]
+  },
+  {
+    text: "Qual o ticket médio dos seus imóveis?",
+    hint: "Use o valor médio das vendas realizadas nos últimos 6 meses.",
+    type: "data",
+    dataKey: "ticket",
+    options: [
+      { text: "Até R$ 300 mil",                  score: 0, value: 280000   },
+      { text: "Entre R$ 300 mil e R$ 800 mil",   score: 0, value: 550000   },
+      { text: "Entre R$ 800 mil e R$ 2 milhões", score: 0, value: 1400000  },
+      { text: "Acima de R$ 2 milhões",           score: 0, value: 3000000  },
+    ]
+  },
+  {
+    text: "Um comprador entra pelo WhatsApp às 22h de domingo. O que acontece?",
+    hint: "Seja honesto — o diagnóstico só funciona com a realidade.",
+    type: "score",
+    scoreFactor: "response_hours",
+    feedbacks: [
+      "Ótimo. Poucos têm isso funcionando.",
+      "Esse é o ponto de maior perda no setor.",
+      "Depender de plantão gera inconsistência.",
+      "Esse lead já foi pra concorrência antes de segunda.",
+    ],
+    options: [
+      { text: "É respondido em minutos por sistema ou plantão fixo", score: 0, lossFactor: 0.05 },
+      { text: "Fica esperando até o próximo dia útil",               score: 3, lossFactor: 0.55 },
+      { text: "Depende de quem está de plantão — incerto",           score: 2, lossFactor: 0.35 },
+      { text: "Some sem resposta",                                   score: 3, lossFactor: 0.65 },
+    ]
+  },
+  {
+    text: "Em quanto tempo seu time responde um lead novo em média?",
+    hint: "Pesquisas mostram que a taxa de contato cai 80% após 5 minutos.",
+    type: "score",
+    scoreFactor: "response_time",
+    feedbacks: [
+      "Excelente. Janela ideal de contato.",
+      "Aceitável, mas já há perda significativa.",
+      "Nessa janela a maioria dos leads já desengajou.",
+      "Tempo crítico — a maioria já comparou com concorrentes.",
+    ],
+    options: [
+      { text: "Menos de 5 minutos",          score: 0, lossFactor: 0.08 },
+      { text: "Entre 5 e 30 minutos",        score: 1, lossFactor: 0.25 },
+      { text: "Entre 30 minutos e 2 horas",  score: 2, lossFactor: 0.45 },
+      { text: "Mais de 2 horas — ou não sei", score: 3, lossFactor: 0.65 },
+    ]
+  },
+  {
+    text: "Dos leads que entram, quantos chegam a fazer uma visita de fato?",
+    hint: "Estime com base nas visitas agendadas no último mês.",
+    type: "data",
+    dataKey: "conversion",
+    options: [
+      { text: "Mais de 30% viram visita",      score: 0, value: 0.30 },
+      { text: "Entre 15% e 30%",               score: 1, value: 0.22 },
+      { text: "Entre 5% e 15%",                score: 2, value: 0.10 },
+      { text: "Menos de 5% — ou não sei",      score: 3, value: 0.04 },
+    ]
+  },
+  {
+    text: "Quando um lead para de responder após o primeiro contato, o que acontece?",
+    hint: "Esse é o ponto onde 73% da receita imobiliária vaza.",
+    type: "score",
+    feedbacks: [
+      "Raro — a maioria abandona cedo demais.",
+      "Ainda há muito a recuperar antes do abandono.",
+      "Esse lead ainda tem intenção. Só saiu do radar.",
+      "Cada lead abandonado é VGV que foi pro concorrente.",
+    ],
+    options: [
+      { text: "Follow-up sistemático até fechar ou desqualificar", score: 0 },
+      { text: "Tentamos mais 1 ou 2 vezes",                        score: 1 },
+      { text: "Geralmente abandonamos",                            score: 2 },
+      { text: "Não temos processo definido",                       score: 3 },
+    ]
+  },
+  {
+    text: "Você sabe qual anúncio gerou qual visita — e qual visita gerou qual venda?",
+    hint: "Sem rastreamento, é impossível saber onde investir mais.",
+    type: "score",
+    feedbacks: [
+      "Raro e valioso. Mantém isso.",
+      "Rastreamento parcial é melhor que nada.",
+      "Você investe no escuro e não sabe o que funciona.",
+      "Todo real de anúncio é aposta sem retorno mensurável.",
+    ],
+    options: [
+      { text: "Sim — rastreamento completo de ponta a ponta", score: 0 },
+      { text: "Parcialmente — tenho alguns dados",            score: 1 },
+      { text: "Não consigo rastrear",                        score: 2 },
+      { text: "Nunca medi isso",                             score: 3 },
+    ]
+  },
+  {
+    text: "Se seu melhor corretor sair amanhã, o que acontece com os leads e relacionamentos dele?",
+    hint: "Em 80% das imobiliárias, o histórico está no celular do corretor.",
+    type: "score",
+    feedbacks: [
+      "Operação robusta. Não depende de indivíduo.",
+      "Ainda há risco de perda parcial.",
+      "Um desligamento pode custar meses de pipeline.",
+      "Esse risco já custou negócios para muitas imobiliárias.",
+    ],
+    options: [
+      { text: "Tudo registrado — o pipeline continua normalmente",  score: 0 },
+      { text: "Perdemos parte do histórico",                        score: 2 },
+      { text: "Perdemos tudo — estava só no celular dele",          score: 3 },
+    ]
+  },
+  {
+    text: "No lançamento de um empreendimento, como você captura e qualifica lead fora do horário do stand?",
+    hint: "Lançamentos geram pico de interesse. Cada hora sem resposta é unidade não vendida.",
+    type: "score",
+    feedbacks: [
+      "Estrutura completa. Aproveita 100% do interesse.",
+      "Ainda há janela sem cobertura.",
+      "Fora do horário do stand, o interesse vai pro concorrente.",
+      "Lançamento sem estrutura digital = VGV desperdiçado.",
+    ],
+    options: [
+      { text: "Estrutura digital funcionando 24h — WhatsApp + landing",  score: 0 },
+      { text: "WhatsApp com atendimento parcial",                        score: 1 },
+      { text: "Só no horário do stand de vendas",                        score: 2 },
+      { text: "Não temos estrutura pra isso",                            score: 3 },
+    ]
+  },
+  {
+    text: "Você consegue abrir o celular agora e ver quantos leads entraram hoje, o que foi dito e quais estão prontos pra visita?",
+    hint: "Gestão sem visibilidade em tempo real opera no escuro.",
+    type: "score",
+    feedbacks: [
+      "Visibilidade total. Você controla a operação.",
+      "Informação tardia ainda é perda de controle.",
+      "Sem visibilidade, você só vê o resultado — não o processo.",
+    ],
+    options: [
+      { text: "Sim — acompanho tudo em tempo real",             score: 0 },
+      { text: "Tenho relatórios, mas não em tempo real",        score: 1 },
+      { text: "Não tenho essa visibilidade",                    score: 2 },
+    ]
+  },
+];
+
+// ─── GAP LIBRARY ─────────────────────────────────────────
+const GAPS = {
+  response_hours: {
+    icon: "🌙",
+    name: "Leads perdidos fora do horário",
+    desc: "Compradores de imóveis pesquisam fora do horário comercial. Sem resposta imediata, vão pro próximo da lista.",
+    solve: "Sistema responde e qualifica 24h — fins de semana e feriados incluídos."
+  },
+  response_time: {
+    icon: "⚡",
+    name: "Velocidade de resposta crítica",
+    desc: "Após 5 minutos, a probabilidade de contato cai 80%. Seus concorrentes também recebem esse lead.",
+    solve: "Resposta em segundos, não minutos. O lead nunca espera."
+  },
+  followup: {
+    icon: "🔄",
+    name: "Follow-up sem processo definido",
+    desc: "Lead que parou de responder ainda tem intenção de compra. Sem follow-up sistemático, ele some.",
+    solve: "Sequência automática de reativação com memória contextual do que foi conversado."
+  },
+  tracking: {
+    icon: "📊",
+    name: "Sem rastreamento de origem",
+    desc: "Sem saber qual anúncio gera venda, todo o investimento em mídia é aposta.",
+    solve: "Rastreamento completo: da mídia ao fechamento. Cada real investido com retorno mensurável."
+  },
+  dependency: {
+    icon: "👤",
+    name: "Operação dependente de pessoas",
+    desc: "Quando o corretor sai, o pipeline vai junto. A empresa não tem memória institucional.",
+    solve: "Todo histórico de conversa e relacionamento fica na operação — não no celular do corretor."
+  },
+  launch: {
+    icon: "🚀",
+    name: "Lançamento sem estrutura digital",
+    desc: "O pico de interesse de um lançamento dura dias. Sem captura 24h, o VGV escapa.",
+    solve: "Estrutura completa de captura e qualificação ativa desde o primeiro anúncio."
+  },
+  visibility: {
+    icon: "👁",
+    name: "Sem visibilidade em tempo real",
+    desc: "Gestão que não vê o pipeline em tempo real opera com informação defasada.",
+    solve: "Painel ao vivo no celular: leads ativos, status de cada conversa, oportunidades quentes."
+  },
+};
+
+// ─── ANSWER MAP: question index → gap key ────────────────
+const Q_GAP_MAP = {
+  2: 'response_hours',
+  3: 'response_time',
+  5: 'followup',
+  6: 'tracking',
+  7: 'dependency',
+  8: 'launch',
+  9: 'visibility',
+};
+
+// ─── HELPERS ─────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showToast(msg, duration = 2800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+function formatCurrency(val) {
+  if (val >= 1_000_000) return 'R$ ' + (val / 1_000_000).toFixed(1).replace('.', ',') + 'M';
+  return 'R$ ' + val.toLocaleString('pt-BR');
+}
+
+// ─── FLOW ─────────────────────────────────────────────────
+function startDiag() { showScreen('screen-info'); }
+
+function startQuestions() {
+  const name = document.getElementById('company-name').value.trim();
+  const seg  = document.getElementById('company-segment').value;
+  if (!name) { showToast('Informe o nome da empresa para continuar.'); return; }
+  if (!seg)  { showToast('Selecione o segmento da empresa.'); return; }
+  state.company  = name;
+  state.segment  = seg;
+  state.userName = document.getElementById('user-name').value.trim();
+  state.answers  = new Array(QUESTIONS.length).fill(null);
+  state.currentQ = 0;
+  renderQuestion(0);
+  showScreen('screen-question');
+}
+
+function renderQuestion(idx) {
+  const q = QUESTIONS[idx];
+  document.getElementById('q-num').textContent = `Pergunta ${String(idx + 1).padStart(2, '0')}`;
+  document.getElementById('q-text').textContent = q.text;
+  document.getElementById('q-hint').textContent = q.hint || '';
+  document.getElementById('q-count').textContent = `${idx + 1} / ${QUESTIONS.length}`;
+  document.getElementById('q-progress').style.width = `${((idx + 1) / QUESTIONS.length) * 100}%`;
+  document.getElementById('btn-back').style.display = idx > 0 ? 'inline-flex' : 'none';
+  document.getElementById('btn-next').disabled = state.answers[idx] === null;
+  document.getElementById('btn-next').textContent = idx === QUESTIONS.length - 1 ? 'Ver diagnóstico' : 'Próxima';
+
+  // Render options
+  const wrap = document.getElementById('q-options');
+  wrap.innerHTML = '';
+  q.options.forEach((opt, i) => {
+    const div = document.createElement('div');
+    div.className = 'option' + (state.answers[idx]?.optionIndex === i ? ' selected' : '');
+    div.innerHTML = `
+      <div class="option-letter">${String.fromCharCode(65 + i)}</div>
+      <div class="option-text">${opt.text}</div>
+    `;
+    div.addEventListener('click', () => selectOption(idx, i));
+    wrap.appendChild(div);
+  });
+}
+
+function selectOption(qIdx, optIdx) {
+  const q   = QUESTIONS[qIdx];
+  const opt = q.options[optIdx];
+
+  state.answers[qIdx] = {
+    optionIndex: optIdx,
+    score: opt.score || 0,
+    value: opt.value,
+    lossFactor: opt.lossFactor,
+  };
+
+  // Visual update
+  document.querySelectorAll('.option').forEach((el, i) => {
+    el.classList.toggle('selected', i === optIdx);
+  });
+  document.getElementById('btn-next').disabled = false;
+
+  // Show feedback toast if available
+  if (q.feedbacks && q.feedbacks[optIdx]) {
+    showToast(q.feedbacks[optIdx]);
+  }
+
+  // Auto-advance after short delay on mobile feel
+  setTimeout(() => {
+    if (state.currentQ < QUESTIONS.length - 1) nextQuestion();
+  }, 900);
+}
+
+function nextQuestion() {
+  if (state.answers[state.currentQ] === null) return;
+  if (state.currentQ < QUESTIONS.length - 1) {
+    state.currentQ++;
+    renderQuestion(state.currentQ);
+  } else {
+    startLoading();
+  }
+}
+
+function prevQuestion() {
+  if (state.currentQ > 0) {
+    state.currentQ--;
+    renderQuestion(state.currentQ);
+  }
+}
+
+// ─── LOADING ─────────────────────────────────────────────
+function startLoading() {
+  showScreen('screen-loading');
+  const steps = ['step-1','step-2','step-3','step-4'];
+  steps.forEach((id, i) => {
+    setTimeout(() => document.getElementById(id).classList.add('visible'), i * 700 + 300);
+  });
+  setTimeout(() => buildReport(), 3200);
+}
+
+// ─── CALCULATE ───────────────────────────────────────────
+function calculateResults() {
+  const leadsPerMonth = state.answers[0]?.value  || 100;
+  const avgTicket     = state.answers[1]?.value  || 550000;
+  const convRate      = state.answers[4]?.value  || 0.10;
+  const hoursLoss     = state.answers[2]?.lossFactor || 0.40;
+  const timeLoss      = state.answers[3]?.lossFactor || 0.35;
+  const combinedLoss  = Math.min(0.88, (hoursLoss + timeLoss) / 2 + 0.12);
+  const leadsLost     = Math.round(leadsPerMonth * combinedLoss);
+  const recoveryRate  = 0.04;
+  const monthlyLoss   = Math.round(leadsLost * recoveryRate * avgTicket);
+  const annualLoss    = monthlyLoss * 12;
+
+  // Score por dimensão
+  const scoreAns = [2,3,5,6,7,8,9];
+  let totalScore = 0, maxScore = 0;
+  scoreAns.forEach(idx => {
+    const a = state.answers[idx];
+    const q = QUESTIONS[idx];
+    const qMax = Math.max(...q.options.map(o => o.score || 0));
+    totalScore += (a?.score || 0);
+    maxScore   += qMax;
+  });
+  const scorePct    = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 50;
+  const maturityPct = 100 - scorePct;
+
+  // Tier
+  const tier = scorePct >= 65 ? 'critica' : scorePct >= 35 ? 'risco' : 'ok';
+
+  // Dimensões (5 áreas)
+  const dimScore = (idxs) => {
+    let s = 0, m = 0;
+    idxs.forEach(i => {
+      const a = state.answers[i]; const q = QUESTIONS[i];
+      s += (a?.score || 0);
+      m += Math.max(...q.options.map(o => o.score || 0));
+    });
+    return m > 0 ? Math.round((1 - s/m) * 100) : 50;
+  };
+  const dimensions = [
+    { name: 'Atendimento',   pct: dimScore([2, 3]) },
+    { name: 'Pipeline',      pct: dimScore([4, 5]) },
+    { name: 'Rastreamento',  pct: dimScore([6, 9]) },
+    { name: 'Operação',      pct: dimScore([7, 8]) },
+    { name: 'Visibilidade',  pct: dimScore([9])    },
+  ];
+
+  // Gaps detalhados (top 4)
+  const GAP_DETAIL = {
+    response_hours: {
+      icon:'🌙', name:'Leads perdidos fora do horário', severity:'Alta',
+      monthlyImpact: Math.round(leadsPerMonth * 0.35 * recoveryRate * avgTicket),
+      current: 'Leads que chegam à noite, fins de semana e feriados ficam sem resposta até o próximo dia útil.',
+      ideal:   'Resposta inteligente em segundos, 24 horas por dia, 7 dias por semana, sem intervenção humana.',
+      solve:   'Agente de IA responde, qualifica e agenda visita automaticamente em qualquer horário.',
+    },
+    response_time: {
+      icon:'⚡', name:'Velocidade de resposta crítica', severity:'Alta',
+      monthlyImpact: Math.round(leadsPerMonth * 0.28 * recoveryRate * avgTicket),
+      current: 'Tempo médio de resposta superior a 30 minutos. Após 5 minutos, 80% dos leads já perderam o interesse ou foram para a concorrência.',
+      ideal:   'Primeiro contato em menos de 60 segundos, independentemente do horário ou volume.',
+      solve:   'Resposta imediata automatizada com contexto do empreendimento e qualificação do perfil.',
+    },
+    followup: {
+      icon:'🔄', name:'Ausência de follow-up sistemático', severity:'Alta',
+      monthlyImpact: Math.round(leadsPerMonth * 0.22 * recoveryRate * avgTicket),
+      current: 'Leads que param de responder são abandonados após 1–2 tentativas. Pipeline estagna sem reativação.',
+      ideal:   'Sequência estruturada de 5–7 pontos de contato ao longo de 30 dias com conteúdo relevante.',
+      solve:   'Follow-up automatizado com memória contextual — o sistema retoma do ponto onde parou.',
+    },
+    tracking: {
+      icon:'📊', name:'Sem rastreamento de origem', severity:'Média',
+      monthlyImpact: Math.round(leadsPerMonth * 0.10 * recoveryRate * avgTicket),
+      current: 'Impossível saber qual anúncio ou canal gerou cada venda. Investimento em mídia sem dados de retorno.',
+      ideal:   'Rastreamento completo: canal → lead → conversa → visita → fechamento. ROI por campanha.',
+      solve:   'UTMs integradas ao sistema com painel de conversão por canal e custo por venda.',
+    },
+    dependency: {
+      icon:'👤', name:'Operação dependente de corretor', severity:'Média',
+      monthlyImpact: Math.round(leadsPerMonth * 0.08 * recoveryRate * avgTicket),
+      current: 'Histórico de leads e relacionamentos fica no celular do corretor. Desligamento = perda de pipeline.',
+      ideal:   'Todo o histórico de conversa e relacionamento registrado institucionalmente, acessível a qualquer momento.',
+      solve:   'Memória centralizada: cada lead tem histórico completo independente do corretor que atendeu.',
+    },
+    launch: {
+      icon:'🚀', name:'Lançamento sem estrutura digital', severity:'Alta',
+      monthlyImpact: Math.round(leadsPerMonth * 0.30 * recoveryRate * avgTicket),
+      current: 'Captura de lead só funciona no horário do stand. Pico de interesse no lançamento não é aproveitado 24h.',
+      ideal:   'Landing page + WhatsApp inteligente capturam e qualificam leads durante todo o período de lançamento.',
+      solve:   'Estrutura completa de captação digital ativa desde o primeiro anúncio, sem depender do stand.',
+    },
+    visibility: {
+      icon:'👁', name:'Sem visibilidade em tempo real', severity:'Média',
+      monthlyImpact: Math.round(leadsPerMonth * 0.06 * recoveryRate * avgTicket),
+      current: 'Gestor não tem acesso em tempo real ao pipeline. Decisões baseadas em informação defasada.',
+      ideal:   'Painel ao vivo no celular: leads ativos, status, oportunidades quentes e alertas de escalação.',
+      solve:   'Dashboard mobile com notificações em tempo real. Gestor intervém só quando necessário.',
+    },
+  };
+
+  const gapScores = [];
+  Object.keys(Q_GAP_MAP).forEach(qIdx => {
+    const ans = state.answers[parseInt(qIdx)];
+    if (ans && ans.score > 0) gapScores.push({ key: Q_GAP_MAP[qIdx], score: ans.score });
+  });
+  gapScores.sort((a,b) => b.score - a.score);
+  let topKeys = gapScores.slice(0,4).map(g => g.key);
+  if (topKeys.length === 0) topKeys = ['visibility','followup','tracking','response_time'];
+  const detailedGaps = topKeys.map(k => GAP_DETAIL[k]).filter(Boolean);
+
+  // Benchmark rows
+  const aQ = state.answers;
+  const benchRows = [
+    { feature:'Resposta fora do horário 24/7',  market:'✗',        current: aQ[2]?.score===0 ? '✓' : '✗',        withSystem:'✓ 24h' },
+    { feature:'Resposta em menos de 1 minuto',  market:'Parcial',  current: aQ[3]?.score<=1  ? '✓' : '✗',        withSystem:'✓ <60s' },
+    { feature:'Follow-up automático',           market:'✗',        current: aQ[5]?.score===0 ? '✓' : '✗',        withSystem:'✓ 7 pontos' },
+    { feature:'Rastreamento de origem',         market:'Parcial',  current: aQ[6]?.score===0 ? '✓' : aQ[6]?.score===1 ? 'Parcial' : '✗', withSystem:'✓ Completo' },
+    { feature:'Visibilidade em tempo real',     market:'✗',        current: aQ[9]?.score===0 ? '✓' : '✗',        withSystem:'✓ Mobile' },
+    { feature:'Memória contextual de leads',    market:'✗',        current: '✗',                                  withSystem:'✓ Histórico' },
+    { feature:'Agendamento automático',         market:'✗',        current: '✗',                                  withSystem:'✓ Integrado' },
+  ];
+
+  // ROI projection
+  const currentMonthlyRevenue  = Math.round(leadsPerMonth * convRate * 0.25 * avgTicket);
+  const recoveredLeads         = Math.round(leadsLost * 0.15);
+  const projectedMonthlyRevenue= Math.round(currentMonthlyRevenue + recoveredLeads * recoveryRate * avgTicket);
+  const monthlyGain            = projectedMonthlyRevenue - currentMonthlyRevenue;
+  const recoveryPct            = Math.round((monthlyGain / (currentMonthlyRevenue || 1)) * 100);
+  const setupCost              = avgTicket >= 1000000 ? 80000 : avgTicket >= 500000 ? 60000 : 45000;
+  const paybackMonths          = monthlyGain > 0 ? Math.ceil(setupCost / monthlyGain) : 12;
+
+  return {
+    leadsPerMonth, leadsLost, avgTicket, monthlyLoss, annualLoss,
+    scorePct, maturityPct, tier, dimensions, detailedGaps, benchRows,
+    currentMonthlyRevenue, projectedMonthlyRevenue, monthlyGain, recoveryPct, paybackMonths,
+  };
+}
+
+// ─── REPORT ──────────────────────────────────────────────
+function buildReport() {
+  const r = calculateResults();
+
+  // ── Header
+  document.getElementById('r-company').textContent = state.company.toUpperCase() + ' · ' + (state.segment === 'construtora' ? 'CONSTRUTORA / INCORPORADORA' : state.segment === 'imobiliaria' ? 'IMOBILIÁRIA' : state.segment.toUpperCase());
+  document.getElementById('r-title').textContent   = `Diagnóstico — ${state.company}`;
+  document.getElementById('r-date').textContent    = new Date().toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+
+  const TIERS = {
+    critica: { label:'⚠ Operação Crítica', cls:'tier-critica', desc:`A operação comercial da ${state.company} apresenta falhas críticas que estão gerando perda de receita de forma contínua. Leads entram e somem sem contato. Cada dia sem estrutura é VGV sendo capturado pela concorrência.` },
+    risco:   { label:'◈ Operação em Risco', cls:'tier-risco', desc:`A ${state.company} tem base operacional, mas gaps estruturais estão drenando receita mensalmente. Com intervenções cirúrgicas nos pontos identificados, o retorno é imediato e mensurável.` },
+    ok:      { label:'✓ Operação Consolidada', cls:'tier-ok', desc:`A ${state.company} opera com maturidade acima da média do setor. Os gaps identificados são oportunidades de otimização que podem elevar a conversão sem aumento proporcional de custo.` },
+  };
+  const t = TIERS[r.tier];
+  const badge = document.getElementById('r-tier-badge');
+  badge.textContent = t.label;
+  badge.className   = 'tier-badge ' + t.cls;
+  document.getElementById('r-tier-desc').textContent = t.desc;
+
+  // ── KPIs
+  const kpiEl = document.getElementById('r-kpis');
+  kpiEl.innerHTML = `
+    <div class="kpi-card danger">
+      <div class="kpi-label">Receita em risco / mês</div>
+      <div class="kpi-value red">${formatCurrency(r.monthlyLoss)}</div>
+      <div class="kpi-sub">${formatCurrency(r.annualLoss)} ao ano</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">Leads perdidos / mês</div>
+      <div class="kpi-value yellow">${r.leadsLost}</div>
+      <div class="kpi-sub">de ${r.leadsPerMonth} que entram</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Maturidade comercial</div>
+      <div class="kpi-value ${r.tier === 'critica' ? 'red' : r.tier === 'risco' ? 'yellow' : 'green'}">${r.maturityPct}%</div>
+      <div class="kpi-sub">vs. média do setor: 38%</div>
+    </div>
+  `;
+
+  // ── Dimensões
+  const dimEl = document.getElementById('r-dimensions');
+  dimEl.innerHTML = '';
+  r.dimensions.forEach(d => {
+    const cls = d.pct >= 60 ? 'green' : d.pct >= 35 ? 'yellow' : 'red';
+    const label = d.pct >= 60 ? 'Consolidado' : d.pct >= 35 ? 'Em risco' : 'Crítico';
+    dimEl.innerHTML += `
+      <div class="dim-row">
+        <div class="dim-name">${d.name}</div>
+        <div class="dim-track"><div class="dim-fill ${cls}" style="width:0%" data-w="${d.pct}%"></div></div>
+        <div class="dim-score ${cls}">${label}</div>
+      </div>
+    `;
+  });
+  setTimeout(() => {
+    dimEl.querySelectorAll('.dim-fill').forEach(el => { el.style.width = el.dataset.w; });
+  }, 100);
+
+  // ── Gaps detalhados
+  const gapsEl = document.getElementById('r-gaps');
+  gapsEl.innerHTML = '';
+  r.detailedGaps.forEach(g => {
+    gapsEl.innerHTML += `
+      <div class="gap-card severity-${g.severity.toLowerCase()}">
+        <div class="gap-header">
+          <div class="gap-title-row">
+            <span class="gap-icon2">${g.icon}</span>
+            <span class="gap-name2">${g.name}</span>
+          </div>
+          <span class="severity-badge ${g.severity.toLowerCase()}">Severidade ${g.severity}</span>
+        </div>
+        <div class="gap-loss-tag">Impacto estimado: ${formatCurrency(g.monthlyImpact)}/mês</div>
+        <div class="gap-body">
+          <div class="gap-state">
+            <div class="gap-state-label">Situação atual</div>
+            <div class="gap-state-text">${g.current}</div>
+          </div>
+          <div class="gap-state">
+            <div class="gap-state-label">Como deveria ser</div>
+            <div class="gap-state-text">${g.ideal}</div>
+          </div>
+        </div>
+        <div class="gap-solve2"><strong>Solução:</strong> ${g.solve}</div>
+      </div>
+    `;
+  });
+
+  // ── Benchmark
+  const benchEl = document.getElementById('r-benchmark');
+  const seg = state.segment === 'construtora' ? 'Construtora média' : 'Imobiliária média';
+  benchEl.innerHTML = `
+    <table class="bench-table">
+      <thead>
+        <tr>
+          <th>Capacidade</th>
+          <th>${seg}</th>
+          <th>${state.company}</th>
+          <th class="highlight-col">Com o sistema</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${r.benchRows.map(row => `
+          <tr>
+            <td>${row.feature}</td>
+            <td class="${row.market === '✓' ? 'check' : row.market === '✗' ? 'cross' : 'partial'}">${row.market}</td>
+            <td class="${row.current === '✓' ? 'check' : row.current === '✗' ? 'cross' : 'partial'}">${row.current}</td>
+            <td class="check highlight-col">${row.withSystem}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+  // ── ROI
+  const roiEl = document.getElementById('r-roi');
+  roiEl.innerHTML = `
+    <div class="roi-row">
+      <div class="roi-box">
+        <div class="roi-box-label">Cenário atual</div>
+        <div class="roi-box-val" style="color:var(--red)">${formatCurrency(r.currentMonthlyRevenue)}</div>
+        <div class="roi-box-sub">VGV gerado por leads / mês</div>
+      </div>
+      <div class="roi-box">
+        <div class="roi-box-label">Com o sistema</div>
+        <div class="roi-box-val" style="color:var(--green)">${formatCurrency(r.projectedMonthlyRevenue)}</div>
+        <div class="roi-box-sub">VGV projetado / mês (+${r.recoveryPct}%)</div>
+      </div>
+    </div>
+    <div class="roi-delta">
+      <div class="roi-delta-label">Ganho mensal estimado com a implantação</div>
+      <div class="roi-delta-val">+ ${formatCurrency(r.monthlyGain)}</div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6;">
+      Projeção baseada em recuperação de ${r.leadsLost} leads/mês com taxa de fechamento de 4% (média do setor para leads reativados). Payback do setup em <strong style="color:var(--gold)">${r.paybackMonths} meses</strong>.
+    </p>
+  `;
+
+  // ── Plano de ação
+  const planEl = document.getElementById('r-plan');
+  planEl.innerHTML = `
+    <div class="phase">
+      <div class="phase-num">1</div>
+      <div class="phase-content">
+        <div class="phase-period">Dias 1–15 · Implantação</div>
+        <div class="phase-title">Estrutura base no ar</div>
+        <ul class="phase-items">
+          <li>WhatsApp com atendimento inteligente 24h ativo</li>
+          <li>Catálogo digital dos empreendimentos integrado ao agente</li>
+          <li>Painel do gestor em tempo real (mobile)</li>
+          <li>Integração com anúncios Meta — captura automática de lead</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="phase-num">2</div>
+      <div class="phase-content">
+        <div class="phase-period">Dias 15–45 · Ativação</div>
+        <div class="phase-title">Pipeline e follow-up operacionais</div>
+        <ul class="phase-items">
+          <li>Sequência de follow-up automático para leads inativos</li>
+          <li>Qualificação por perfil de compra (ticket, prazo, finalidade)</li>
+          <li>Agendamento automático de visita com confirmação</li>
+          <li>Rastreamento de origem por canal (Meta, portal, indicação)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase">
+      <div class="phase-num">3</div>
+      <div class="phase-content">
+        <div class="phase-period">Dias 45–60 · Consolidação</div>
+        <div class="phase-title">Inteligência e escala</div>
+        <ul class="phase-items">
+          <li>Memória contextual — sistema lembra histórico de cada lead</li>
+          <li>Alerta ao corretor quando lead quente retorna</li>
+          <li>Relatório semanal de conversão por canal e corretor</li>
+          <li>Otimização da copy dos anúncios baseada em dados reais</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  showScreen('screen-report');
+}
+
+function agendarReuniao() {
+  document.getElementById('cta-agendar').scrollIntoView({ behavior: 'smooth' });
+}
+
+function enviarAgendamento() {
+  const nome      = document.getElementById('cta-nome').value.trim();
+  const whatsapp  = document.getElementById('cta-whatsapp').value.trim();
+  const horario   = document.getElementById('cta-horario').value;
+
+  if (!nome)     { showToast('Informe seu nome.'); return; }
+  if (!whatsapp) { showToast('Informe seu WhatsApp.'); return; }
+  if (!horario)  { showToast('Selecione o melhor horário.'); return; }
+
+  // Monta mensagem pro WhatsApp
+  const horarioLabels = { manha:'Manhã (8h–12h)', tarde:'Tarde (12h–18h)', noite:'Noite (18h–21h)', qualquer:'Qualquer horário' };
+  const msg = encodeURIComponent(
+    `Olá! Acabei de fazer o diagnóstico comercial.\n\n` +
+    `*Empresa:* ${state.company}\n` +
+    `*Segmento:* ${state.segment}\n` +
+    `*Nome:* ${nome}\n` +
+    `*Melhor horário:* ${horarioLabels[horario]}\n\n` +
+    `Quero agendar o diagnóstico completo.`
+  );
+
+  // Número do WhatsApp — trocar pelo número real
+  const numero = '5548999999999';
+  window.open(`https://wa.me/${numero}?text=${msg}`, '_blank');
+
+  // Mostra confirmação
+  document.getElementById('cta-form-wrap').style.display = 'none';
+  document.getElementById('cta-sucesso').style.display   = 'block';
+  document.getElementById('cta-sucesso-nome').textContent = `Perfeito, ${nome.split(' ')[0]}!`;
+}
+
+function resetDiag() {
+  state.answers  = [];
+  state.currentQ = 0;
+  showScreen('screen-intro');
+}
+</script>
+</body>
+</html>

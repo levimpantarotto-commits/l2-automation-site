@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 260" fill="none">
+  <!-- Open hexagonal bracket (left + bottom, open top-right) -->
+  <path
+    d="M 148,18 L 52,18 L 18,54 L 18,154 L 52,190 L 100,190"
+    stroke="#D4AF37" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"
+  />
+  <!-- Circuit trace from bottom -->
+  <path
+    d="M 100,190 L 100,200 L 185,200"
+    stroke="#D4AF37" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"
+  />
+  <!-- Terminal circle -->
+  <circle cx="185" cy="200" r="9" stroke="#D4AF37" stroke-width="6" fill="none"/>
+  <!-- L2 text -->
+  <text
+    x="52" y="168"
+    font-family="'Inter Tight', sans-serif"
+    font-weight="900"
+    font-size="112"
+    letter-spacing="-4"
+    fill="#FFFFFF"
+  >L2</text>
+</svg>
