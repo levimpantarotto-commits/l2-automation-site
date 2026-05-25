@@ -1639,31 +1639,63 @@ function agendarReuniao() {
   document.getElementById('cta-agendar').scrollIntoView({ behavior: 'smooth' });
 }
 
+// ── Trocar pela URL gerada no Apps Script após implantar
+const APPS_SCRIPT_URL = 'COLE_A_URL_DO_APPS_SCRIPT_AQUI';
+
+// ── Trocar pelo número real de WhatsApp (com DDI)
+const WHATSAPP_NUMERO = '5548999999999';
+
 function enviarAgendamento() {
-  const nome      = document.getElementById('cta-nome').value.trim();
-  const whatsapp  = document.getElementById('cta-whatsapp').value.trim();
-  const horario   = document.getElementById('cta-horario').value;
+  const nome     = document.getElementById('cta-nome').value.trim();
+  const whatsapp = document.getElementById('cta-whatsapp').value.trim();
+  const horario  = document.getElementById('cta-horario').value;
 
   if (!nome)     { showToast('Informe seu nome.'); return; }
   if (!whatsapp) { showToast('Informe seu WhatsApp.'); return; }
   if (!horario)  { showToast('Selecione o melhor horário.'); return; }
 
-  // Monta mensagem pro WhatsApp
+  // Calcula dados do diagnóstico pra salvar junto
+  const r = calculateResults();
   const horarioLabels = { manha:'Manhã (8h–12h)', tarde:'Tarde (12h–18h)', noite:'Noite (18h–21h)', qualquer:'Qualquer horário' };
+  const segLabels = { imobiliaria:'Imobiliária', construtora:'Construtora / Incorporadora', corretor:'Corretor autônomo', outro:'Outro' };
+  const tierLabels = { critica:'Operação Crítica', risco:'Operação em Risco', ok:'Operação Consolidada' };
+
+  const payload = {
+    empresa:      state.company,
+    segmento:     segLabels[state.segment] || state.segment,
+    nome:         nome,
+    whatsapp:     whatsapp,
+    horario:      horarioLabels[horario] || horario,
+    leads:        r.leadsPerMonth,
+    ticket:       'R$ ' + (r.avgTicket / 1000).toFixed(0) + 'k',
+    tier:         tierLabels[r.tier] || r.tier,
+    perda_mensal: formatCurrency(r.monthlyLoss),
+    perda_anual:  formatCurrency(r.annualLoss),
+  };
+
+  // Salva na planilha (no-cors — funciona mesmo sem resposta legível)
+  if (APPS_SCRIPT_URL !== 'COLE_A_URL_DO_APPS_SCRIPT_AQUI') {
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {}); // falha silenciosa — WhatsApp abre de qualquer forma
+  }
+
+  // Abre WhatsApp com mensagem pré-preenchida
   const msg = encodeURIComponent(
     `Olá! Acabei de fazer o diagnóstico comercial.\n\n` +
     `*Empresa:* ${state.company}\n` +
-    `*Segmento:* ${state.segment}\n` +
+    `*Segmento:* ${segLabels[state.segment] || state.segment}\n` +
     `*Nome:* ${nome}\n` +
-    `*Melhor horário:* ${horarioLabels[horario]}\n\n` +
+    `*Melhor horário:* ${horarioLabels[horario]}\n` +
+    `*Receita em risco:* ${formatCurrency(r.monthlyLoss)}/mês\n\n` +
     `Quero agendar o diagnóstico completo.`
   );
+  window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${msg}`, '_blank');
 
-  // Número do WhatsApp — trocar pelo número real
-  const numero = '5548999999999';
-  window.open(`https://wa.me/${numero}?text=${msg}`, '_blank');
-
-  // Mostra confirmação
+  // Tela de confirmação
   document.getElementById('cta-form-wrap').style.display = 'none';
   document.getElementById('cta-sucesso').style.display   = 'block';
   document.getElementById('cta-sucesso-nome').textContent = `Perfeito, ${nome.split(' ')[0]}!`;
