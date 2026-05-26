@@ -182,7 +182,7 @@
     .stat-label{font-size:10px;font-weight:800;letter-spacing:.35em;text-transform:uppercase;color:var(--mute);}
 
     /* ══ CTA ══ */
-    #cta{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:160px 60px;overflow:hidden;}
+    #cta{position:relative;z-index:2;min-height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:110px 60px 130px;overflow:hidden;}
     .cta-glow{position:absolute;width:700px;height:700px;background:radial-gradient(circle,rgba(212,175,55,.08) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
     .cta-h2{font-size:clamp(44px,7vw,100px);font-weight:900;letter-spacing:-.04em;line-height:.95;max-width:14ch;}
     .cta-h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
@@ -897,12 +897,12 @@
     });
     tl.call(() => wrap.classList.add('revealed'));
 
-    ScrollTrigger.create({
-      trigger: wrap,
-      start: 'top 80%',
-      onEnter: () => { wrap.classList.remove('revealed'); tl.restart(); },
-      onEnterBack: () => { wrap.classList.remove('revealed'); tl.restart(); }
-    });
+    const ioPipe = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { wrap.classList.remove('revealed'); tl.restart(); }
+      });
+    }, { threshold: 0.25 });
+    ioPipe.observe(wrap);
   })();
 
   /* ═══════════════════════════════════════════
@@ -926,12 +926,10 @@
       tl.to(node, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.6)' }, 1.6 + i * 0.1);
     });
 
-    ScrollTrigger.create({
-      trigger: '#clip-reveal',
-      start: 'top 75%',
-      onEnter: () => tl.restart(),
-      onEnterBack: () => tl.restart()
-    });
+    const ioNet = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) tl.restart(); });
+    }, { threshold: 0.25 });
+    ioNet.observe(svg);
   })();
 
   /* ── Logo draw animation (hero + nav, in parallel) ── */
@@ -988,12 +986,10 @@
     letters.forEach((l, i) => {
       tl.to(l, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: 'power4.out' }, i * 0.16);
     });
-    ScrollTrigger.create({
-      trigger: '#osia-letters',
-      start: 'top 80%',
-      onEnter: () => tl.restart(),
-      onEnterBack: () => tl.restart()
-    });
+    const ioOsia = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) tl.restart(); });
+    }, { threshold: 0.3 });
+    ioOsia.observe(document.getElementById('osia-letters'));
   })();
 
   /* ── Funnel — scroll-driven chat + pipeline steps ── */
@@ -1025,52 +1021,51 @@
     const sb = document.getElementById('chat-status-bar');
     if (sb) { sb.style.opacity = '0'; sb.style.transition = 'opacity .4s ease'; }
 
-    const shownMsgs = new Set();
-    const activeSteps = new Set();
+    const chatBody = document.getElementById('chat-body');
+    const statusBar = document.getElementById('chat-status-bar');
 
     ScrollTrigger.create({
       trigger: '#funnel-pin-wrap',
       start: 'top top',
-      end: '+=1200',
+      end: '+=1800',
       pin: '#funnel-pin',
       anticipatePin: 1,
       onUpdate(self) {
         const p = self.progress;
 
-        // Connector fill
+        // Connector fill (bidirectional via progress)
         const fillEl = document.getElementById('fstep-fill');
         if (fillEl) fillEl.style.height = Math.min(p / 0.9, 1) * 100 + '%';
 
-        // Activate steps
+        // Steps active/inactive (bidirectional)
         stepThresholds.forEach((threshold, i) => {
-          if (p >= threshold && !activeSteps.has(i)) {
-            activeSteps.add(i);
-            const el = document.querySelector('[data-step="' + i + '"]');
-            if (el) el.classList.add('active');
-          }
+          const el = document.querySelector('[data-step="' + i + '"]');
+          if (!el) return;
+          if (p >= threshold) el.classList.add('active');
+          else el.classList.remove('active');
         });
 
-        // Reveal chat messages
+        // Chat messages (bidirectional — aparece/desaparece com progress)
         chatMsgs.forEach(({ id, at }) => {
-          if (p >= at && !shownMsgs.has(id)) {
-            shownMsgs.add(id);
-            const el = document.getElementById(id);
-            if (el) {
-              el.style.opacity = '1';
-              el.style.transform = 'translateY(0)';
-              setTimeout(() => {
-                const body = document.getElementById('chat-body');
-                if (body) body.scrollTop = body.scrollHeight;
-              }, 130);
-            }
+          const el = document.getElementById(id);
+          if (!el) return;
+          if (p >= at) {
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+          } else {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(10px)';
           }
         });
 
-        // Status bar
-        if (p >= 0.96) {
-          const bar = document.getElementById('chat-status-bar');
-          if (bar) bar.style.opacity = '1';
+        // Auto-scroll do chat body proporcional ao progress (suave + reversível)
+        if (chatBody) {
+          const maxScroll = Math.max(0, chatBody.scrollHeight - chatBody.clientHeight);
+          chatBody.scrollTop = maxScroll * Math.min(p / 0.95, 1);
         }
+
+        // Status bar (bidirectional)
+        if (statusBar) statusBar.style.opacity = (p >= 0.94) ? '1' : '0';
       }
     });
   })();
@@ -1089,7 +1084,7 @@
         scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 60%', scrub: 0.8 } });
   });
 
-  /* ── Stats — timeline com toggleActions (anima quando entra, reverte quando sai) ── */
+  /* ── Stats — IntersectionObserver (dispara mesmo quando elemento já está visível ao carregar) ── */
   const circ = 2 * Math.PI * 80;
   document.querySelectorAll('.stat-block').forEach((block, i) => {
     const ring = block.querySelector('.stat-ring-fill');
@@ -1099,22 +1094,19 @@
     const targetNum = +num.dataset.count;
     const suffix = num.dataset.suffix || '';
     const proxy = { v: 0 };
-    // Estado inicial garantido
     gsap.set(ring, { strokeDashoffset: circ });
     num.textContent = '0' + suffix;
     const tween = gsap.to(proxy, {
-      v: 1, duration: 2.2, ease: 'power2.out', paused: true, delay: i * 0.15,
+      v: 1, duration: 2.4, ease: 'power2.out', paused: true, delay: i * 0.18,
       onUpdate(){
         ring.style.strokeDashoffset = (circ - (circ - targetOffset) * proxy.v).toFixed(1);
         num.textContent = Math.round(targetNum * proxy.v) + suffix;
       }
     });
-    ScrollTrigger.create({
-      trigger: block,
-      start: 'top 80%',
-      onEnter: () => tween.restart(),
-      onEnterBack: () => tween.restart()
-    });
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => { if (e.isIntersecting) tween.restart(); });
+    }, { threshold: 0.35 });
+    io.observe(block);
   });
   // Mantém compat com [data-count] fora dos stats (caso exista no futuro)
   document.querySelectorAll('[data-count]:not(.stat-num)').forEach(el => {
