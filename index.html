@@ -805,7 +805,7 @@
   })();
 
   /* ═══════════════════════════════════════════
-     NEURAL NET — Rede SVG scroll-driven no Manifesto (leve)
+     NEURAL NET — Rede SVG scroll-driven no Manifesto (timeline scrub)
   ═══════════════════════════════════════════ */
   (function initNeuralNet(){
     const svg = document.getElementById('neural-net');
@@ -813,28 +813,27 @@
     const edges = svg.querySelectorAll('.ne');
     const nodes = svg.querySelectorAll('.nn');
 
-    // Linhas se desenham + nós aparecem progressivamente conforme entram na viewport
-    gsap.to(edges, {
-      strokeDashoffset: 0,
-      ease: 'none',
-      stagger: { amount: 0.7 },
+    // Estado inicial garantido
+    gsap.set(edges, { strokeDashoffset: 300, opacity: 0 });
+    gsap.set(nodes, { opacity: 0, scale: 0, transformOrigin: 'center', transformBox: 'fill-box' });
+
+    // Timeline com scrub: linhas se desenham em sequência, depois os nós aparecem
+    const tl = gsap.timeline({
       scrollTrigger: {
         trigger: '#clip-reveal',
-        start: 'top 80%',
+        start: 'top 90%',
         end: 'top 20%',
-        scrub: 0.6
+        scrub: 1
       }
     });
-    gsap.fromTo(nodes,
-      { opacity: 0, scale: 0 },
-      { opacity: 1, scale: 1, ease: 'back.out(1.5)', stagger: { amount: 0.5 },
-        scrollTrigger: {
-          trigger: '#clip-reveal',
-          start: 'top 70%',
-          end: 'top 30%',
-          scrub: 0.6
-        }
-      });
+
+    edges.forEach((edge, i) => {
+      tl.to(edge, { opacity: 0.65, duration: 0.05, ease: 'none' }, i * 0.06)
+        .to(edge, { strokeDashoffset: 0, duration: 0.4, ease: 'none' }, i * 0.06);
+    });
+    nodes.forEach((node, i) => {
+      tl.to(node, { opacity: 1, scale: 1, duration: 0.3, ease: 'power2.out' }, 1.2 + i * 0.08);
+    });
   })();
 
   /* ── Logo draw animation (hero + nav, in parallel) ── */
@@ -882,11 +881,23 @@
     { clipPath: 'circle(85% at 50% 50%)', opacity: 1, duration: 1.4, ease: 'power3.out',
       scrollTrigger: { trigger: '#clip-reveal', start: 'top 70%' } });
 
-  /* ── OSIA letters reveal ── */
-  gsap.fromTo('#osia-letters span',
-    { opacity: 0, y: 100, scale: .6 },
-    { opacity: 1, y: 0, scale: 1, duration: 1.3, ease: 'power4.out', stagger: .14,
-      scrollTrigger: { trigger: '#osia-letters', start: 'top 78%' } });
+  /* ── OSIA letters reveal — scrub-driven (timeline + scrub) ── */
+  (function initOsiaLetters(){
+    const letters = document.querySelectorAll('#osia-letters span');
+    if (!letters.length) return;
+    gsap.set(letters, { opacity: 0, y: 120, scale: .5 });
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: '#osia',
+        start: 'top bottom',
+        end: 'top 25%',
+        scrub: 1
+      }
+    });
+    letters.forEach((l, i) => {
+      tl.to(l, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: 'power3.out' }, i * 0.18);
+    });
+  })();
 
   /* ── Funnel — scroll-driven chat + pipeline steps ── */
   (function(){
@@ -973,10 +984,12 @@
       scrollTrigger: { trigger: card, start: 'top 92%', end: 'top 45%', scrub: .8 } });
   });
 
-  /* ── Generic reveals ── */
+  /* ── Generic reveals — scrub leve pra sempre ver acontecer ── */
   document.querySelectorAll('.reveal').forEach(el => {
-    gsap.fromTo(el, { opacity: 0, y: 45 }, { opacity: 1, y: 0, duration: 1.1, ease: 'power3.out',
-      scrollTrigger: { trigger: el, start: 'top 88%' } });
+    gsap.fromTo(el,
+      { opacity: 0, y: 60 },
+      { opacity: 1, y: 0, ease: 'none',
+        scrollTrigger: { trigger: el, start: 'top 95%', end: 'top 60%', scrub: 0.8 } });
   });
 
   /* ── Stats ── */
