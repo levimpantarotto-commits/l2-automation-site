@@ -171,13 +171,14 @@
     .osia-stmt{font-size:clamp(20px,2.4vw,32px);font-weight:900;letter-spacing:-.02em;line-height:1.35;color:var(--white);}
     .osia-stmt em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
     /* ══ STATS ══ */
-    #stats{position:relative;z-index:2;padding:140px 60px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
-    .stats-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:60px;}
-    .stat-block{text-align:center;}
-    .stat-ring{width:180px;height:180px;margin:0 auto 28px;}
+    #stats{position:relative;z-index:2;padding:90px 60px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+    .stats-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:40px;}
+    .stat-block{text-align:center;position:relative;}
+    .stat-ring-wrap{position:relative;width:170px;height:170px;margin:0 auto 14px;}
+    .stat-ring{width:170px;height:170px;display:block;}
     .stat-ring-bg{fill:none;stroke:rgba(212,175,55,.1);stroke-width:3;}
-    .stat-ring-fill{fill:none;stroke:var(--gold);stroke-width:3;stroke-linecap:round;stroke-dasharray:502;stroke-dashoffset:502;transform:rotate(-90deg);transform-origin:90px 90px;transition:stroke-dashoffset 2s cubic-bezier(.16,1,.3,1);}
-    .stat-num{font-size:clamp(52px,6vw,80px);font-weight:900;letter-spacing:-.04em;color:var(--gold);line-height:1;margin-bottom:12px;}
+    .stat-ring-fill{fill:none;stroke:var(--gold);stroke-width:3;stroke-linecap:round;stroke-dasharray:502;stroke-dashoffset:502;transform:rotate(-90deg);transform-origin:90px 90px;will-change:stroke-dashoffset;filter:drop-shadow(0 0 8px rgba(212,175,55,.25));}
+    .stat-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(40px,4.5vw,56px);font-weight:900;letter-spacing:-.04em;color:var(--gold);line-height:1;}
     .stat-label{font-size:10px;font-weight:800;letter-spacing:.35em;text-transform:uppercase;color:var(--mute);}
 
     /* ══ CTA ══ */
@@ -210,11 +211,18 @@
     #cta .bg-image{background-image:url('img/bg-cta.webp');animation:bg-breath 18s ease-in-out infinite;}
     #clip-reveal .bg-image{background-image:url('img/bg-manifesto.webp');animation:bg-drift 20s ease-in-out infinite;}
 
-    /* Funnel: imagem do pipeline no header, com glow pulsante após reveal */
+    /* Funnel: imagem do pipeline com 5 cards surgindo em sequência */
     .funnel-pipeline-img{display:block;width:100%;max-width:1100px;margin:0 auto 80px;border-radius:6px;overflow:hidden;position:relative;box-shadow:0 0 0 rgba(212,175,55,0);transition:box-shadow .6s;}
     .funnel-pipeline-img.revealed{box-shadow:0 0 80px -20px rgba(212,175,55,.35);animation:pipeline-glow 4s ease-in-out infinite;}
     @keyframes pipeline-glow { 0%,100%{box-shadow:0 0 60px -25px rgba(212,175,55,.25);} 50%{box-shadow:0 0 100px -15px rgba(212,175,55,.45);} }
-    .funnel-pipeline-img img{display:block;width:100%;height:auto;clip-path:inset(0 100% 0 0);will-change:clip-path;}
+    .funnel-pipeline-img img{display:block;width:100%;height:auto;}
+    /* Cobertores que escondem cada card (cor preta = fundo do site). Removidos em sequência por JS */
+    .pipeline-mask{position:absolute;top:0;bottom:0;background:#08080A;will-change:opacity,transform;pointer-events:none;}
+    .pipeline-mask.m1{left:0%;width:20.5%;}
+    .pipeline-mask.m2{left:20.5%;width:19.5%;}
+    .pipeline-mask.m3{left:40%;width:20%;}
+    .pipeline-mask.m4{left:60%;width:20%;}
+    .pipeline-mask.m5{left:80%;width:20%;}
     /* Garante que o conteúdo das seções fica acima do bg */
     #osia .osia-inner, #agents .agents-header, #agents .agents-grid,
     #cta .cta-glow, #cta .cta-h2, #cta .cta-sub, #cta .cta-btn,
@@ -485,6 +493,11 @@
 
     <div class="funnel-pipeline-img">
       <img src="img/bg-funnel.webp" alt="Pipeline L2: Lead Entra → IA Qualifica → CRM Atualiza → Mensagem Automática → Contrato Enviado" id="funnel-pipeline-img"/>
+      <div class="pipeline-mask m1" data-card="0"></div>
+      <div class="pipeline-mask m2" data-card="1"></div>
+      <div class="pipeline-mask m3" data-card="2"></div>
+      <div class="pipeline-mask m4" data-card="3"></div>
+      <div class="pipeline-mask m5" data-card="4"></div>
     </div>
 
     <div id="funnel-pin-wrap">
@@ -686,18 +699,24 @@
   <section id="stats">
     <div class="stats-inner">
       <div class="stat-block reveal">
-        <svg class="stat-ring" viewBox="0 0 180 180"><circle class="stat-ring-bg" cx="90" cy="90" r="80"/><circle class="stat-ring-fill" cx="90" cy="90" r="80" data-pct="90"/></svg>
-        <div class="stat-num" data-count="10" data-suffix="x">0</div>
+        <div class="stat-ring-wrap">
+          <svg class="stat-ring" viewBox="0 0 180 180"><circle class="stat-ring-bg" cx="90" cy="90" r="80"/><circle class="stat-ring-fill" cx="90" cy="90" r="80" data-pct="90"/></svg>
+          <div class="stat-num" data-count="10" data-suffix="x">0x</div>
+        </div>
         <p class="stat-label">Velocidade de Resposta</p>
       </div>
       <div class="stat-block reveal">
-        <svg class="stat-ring" viewBox="0 0 180 180"><circle class="stat-ring-bg" cx="90" cy="90" r="80"/><circle class="stat-ring-fill" cx="90" cy="90" r="80" data-pct="85"/></svg>
-        <div class="stat-num" data-count="85" data-suffix="%">0</div>
+        <div class="stat-ring-wrap">
+          <svg class="stat-ring" viewBox="0 0 180 180"><circle class="stat-ring-bg" cx="90" cy="90" r="80"/><circle class="stat-ring-fill" cx="90" cy="90" r="80" data-pct="85"/></svg>
+          <div class="stat-num" data-count="85" data-suffix="%">0%</div>
+        </div>
         <p class="stat-label">Taxa de Filtro por IA</p>
       </div>
       <div class="stat-block reveal">
-        <svg class="stat-ring" viewBox="0 0 180 180"><circle class="stat-ring-bg" cx="90" cy="90" r="80"/><circle class="stat-ring-fill" cx="90" cy="90" r="80" data-pct="75"/></svg>
-        <div class="stat-num" data-count="3" data-suffix="x">0</div>
+        <div class="stat-ring-wrap">
+          <svg class="stat-ring" viewBox="0 0 180 180"><circle class="stat-ring-bg" cx="90" cy="90" r="80"/><circle class="stat-ring-fill" cx="90" cy="90" r="80" data-pct="75"/></svg>
+          <div class="stat-num" data-count="3" data-suffix="x">0x</div>
+        </div>
         <p class="stat-label">ROI Médio dos Clientes</p>
       </div>
     </div>
@@ -865,13 +884,26 @@
     { opacity: 0.5, scale: 1, clipPath: 'inset(0 0% 0 0)', ease: 'none',
       scrollTrigger: { trigger: '#clip-reveal', start: 'top bottom', end: 'top 30%', scrub: 1 } });
 
-  // FUNNEL pipeline image — clip reveal da esquerda pra direita + glow pulse depois
-  gsap.to('#funnel-pipeline-img',
-    { clipPath: 'inset(0 0% 0 0)', ease: 'none',
-      scrollTrigger: { trigger: '.funnel-pipeline-img', start: 'top 80%', end: 'top 30%', scrub: 0.8,
-        onLeave: () => document.querySelector('.funnel-pipeline-img')?.classList.add('revealed'),
-        onEnterBack: () => document.querySelector('.funnel-pipeline-img')?.classList.remove('revealed')
-      } });
+  // FUNNEL pipeline — 5 cards surgem em sequência (timeline + restart no enter)
+  (function initPipeline(){
+    const wrap = document.querySelector('.funnel-pipeline-img');
+    if (!wrap) return;
+    const masks = wrap.querySelectorAll('.pipeline-mask');
+    gsap.set(masks, { opacity: 1, scaleX: 1, transformOrigin: 'right center' });
+
+    const tl = gsap.timeline({ paused: true });
+    masks.forEach((m, i) => {
+      tl.to(m, { opacity: 0, scaleX: 0, duration: 0.7, ease: 'power3.out' }, i * 0.32);
+    });
+    tl.call(() => wrap.classList.add('revealed'));
+
+    ScrollTrigger.create({
+      trigger: wrap,
+      start: 'top 80%',
+      onEnter: () => { wrap.classList.remove('revealed'); tl.restart(); },
+      onEnterBack: () => { wrap.classList.remove('revealed'); tl.restart(); }
+    });
+  })();
 
   /* ═══════════════════════════════════════════
      NEURAL NET — Rede SVG (timeline + toggleActions, anima sempre que entra)
