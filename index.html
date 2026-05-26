@@ -211,18 +211,25 @@
     #cta .bg-image{background-image:url('img/bg-cta.webp');animation:bg-breath 18s ease-in-out infinite;}
     #clip-reveal .bg-image{background-image:url('img/bg-manifesto.webp');animation:bg-drift 20s ease-in-out infinite;}
 
-    /* Funnel: imagem do pipeline com 5 cards surgindo em sequência */
-    .funnel-pipeline-img{display:block;width:100%;max-width:1100px;margin:0 auto 80px;border-radius:6px;overflow:hidden;position:relative;box-shadow:0 0 0 rgba(212,175,55,0);transition:box-shadow .6s;}
-    .funnel-pipeline-img.revealed{box-shadow:0 0 80px -20px rgba(212,175,55,.35);animation:pipeline-glow 4s ease-in-out infinite;}
-    @keyframes pipeline-glow { 0%,100%{box-shadow:0 0 60px -25px rgba(212,175,55,.25);} 50%{box-shadow:0 0 100px -15px rgba(212,175,55,.45);} }
-    .funnel-pipeline-img img{display:block;width:100%;height:auto;}
-    /* Cobertores que escondem cada card (cor preta = fundo do site). Removidos em sequência por JS */
-    .pipeline-mask{position:absolute;top:0;bottom:0;background:#08080A;will-change:opacity,transform;pointer-events:none;}
-    .pipeline-mask.m1{left:0%;width:20.5%;}
-    .pipeline-mask.m2{left:20.5%;width:19.5%;}
-    .pipeline-mask.m3{left:40%;width:20%;}
-    .pipeline-mask.m4{left:60%;width:20%;}
-    .pipeline-mask.m5{left:80%;width:20%;}
+    /* ══ PIPELINE HTML — 5 cards nativos animados (substitui imagem) ══ */
+    .pipeline-html{position:relative;max-width:1200px;margin:0 auto 80px;padding:50px 20px;display:flex;align-items:center;justify-content:space-between;gap:8px;overflow:hidden;}
+    .pipeline-bg-flow{position:absolute;inset:0;pointer-events:none;opacity:.35;overflow:hidden;}
+    .pipeline-bg-flow svg{position:absolute;top:0;left:0;width:200%;height:100%;animation:bgFlow 24s linear infinite;}
+    @keyframes bgFlow { 0%{transform:translateX(0);} 100%{transform:translateX(-50%);} }
+    .pcard{flex:1;background:rgba(8,8,10,.78);border:1px solid rgba(212,175,55,.18);border-radius:6px;padding:24px 12px 22px;text-align:center;position:relative;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;backdrop-filter:blur(2px);transition:border-color .5s,box-shadow .5s,background .5s;z-index:2;will-change:transform,opacity;}
+    .pcard.active{border-color:rgba(212,175,55,.55);box-shadow:0 0 36px -10px rgba(212,175,55,.4),inset 0 0 0 1px rgba(212,175,55,.08);background:rgba(13,13,16,.92);}
+    .pcard.active .pcard-icon{filter:drop-shadow(0 0 8px rgba(212,175,55,.6));}
+    .pcard-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;line-height:1.5;}
+    .pcard-icon{width:48px;height:48px;color:var(--gold);transition:filter .5s;}
+    .pcard-icon svg{width:100%;height:100%;}
+    .pcard-arrow{flex-shrink:0;width:30px;height:30px;color:var(--gold);opacity:0;display:flex;align-items:center;justify-content:center;z-index:2;will-change:opacity,transform;}
+    .pcard-arrow svg{width:100%;height:100%;}
+    .pcard-check{position:absolute;top:-10px;right:-10px;width:26px;height:26px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--black);opacity:0;will-change:opacity,transform;box-shadow:0 0 14px rgba(212,175,55,.5);}
+    .pcard-check svg{width:14px;height:14px;}
+    @media(max-width:1000px){
+      .pipeline-html{flex-direction:column;gap:14px;padding:30px 16px;}
+      .pcard-arrow{transform:rotate(90deg);}
+    }
     /* Garante que o conteúdo das seções fica acima do bg */
     #osia .osia-inner, #agents .agents-header, #agents .agents-grid,
     #cta .cta-glow, #cta .cta-h2, #cta .cta-sub, #cta .cta-btn,
@@ -491,13 +498,113 @@
       <p class="flow-desc">Cada etapa do seu funil é coberta por um agente especializado. Sem gaps, sem custo humano em tarefas repetitivas.</p>
     </div>
 
-    <div class="funnel-pipeline-img">
-      <img src="img/bg-funnel.webp" alt="Pipeline L2: Lead Entra → IA Qualifica → CRM Atualiza → Mensagem Automática → Contrato Enviado" id="funnel-pipeline-img"/>
-      <div class="pipeline-mask m1" data-card="0"></div>
-      <div class="pipeline-mask m2" data-card="1"></div>
-      <div class="pipeline-mask m3" data-card="2"></div>
-      <div class="pipeline-mask m4" data-card="3"></div>
-      <div class="pipeline-mask m5" data-card="4"></div>
+    <div class="pipeline-html" id="pipeline-html">
+      <!-- Partículas de fluxo no fundo -->
+      <div class="pipeline-bg-flow">
+        <svg viewBox="0 0 1200 200" preserveAspectRatio="none">
+          <g fill="#D4AF37">
+            <circle cx="40" cy="80" r="1.2"/><circle cx="120" cy="50" r="1"/><circle cx="200" cy="110" r="1.5"/><circle cx="280" cy="70" r="1"/><circle cx="360" cy="140" r="1.2"/><circle cx="440" cy="60" r="1"/><circle cx="520" cy="100" r="1.4"/><circle cx="600" cy="40" r="1"/><circle cx="680" cy="130" r="1.2"/><circle cx="760" cy="80" r="1"/><circle cx="840" cy="150" r="1.3"/><circle cx="920" cy="50" r="1"/><circle cx="1000" cy="110" r="1.4"/><circle cx="1080" cy="70" r="1"/><circle cx="1160" cy="120" r="1.2"/>
+            <circle cx="1240" cy="80" r="1.2"/><circle cx="1320" cy="50" r="1"/><circle cx="1400" cy="110" r="1.5"/><circle cx="1480" cy="70" r="1"/><circle cx="1560" cy="140" r="1.2"/><circle cx="1640" cy="60" r="1"/><circle cx="1720" cy="100" r="1.4"/><circle cx="1800" cy="40" r="1"/><circle cx="1880" cy="130" r="1.2"/><circle cx="1960" cy="80" r="1"/><circle cx="2040" cy="150" r="1.3"/><circle cx="2120" cy="50" r="1"/><circle cx="2200" cy="110" r="1.4"/><circle cx="2280" cy="70" r="1"/><circle cx="2360" cy="120" r="1.2"/>
+          </g>
+          <g stroke="#D4AF37" stroke-width=".4" opacity=".4" fill="none">
+            <path d="M0 100 Q150 60 300 100 T600 100 T900 100 T1200 100" />
+            <path d="M0 120 Q200 80 400 130 T800 110 T1200 130" />
+            <path d="M1200 100 Q1350 60 1500 100 T1800 100 T2100 100 T2400 100" />
+            <path d="M1200 120 Q1400 80 1600 130 T2000 110 T2400 130" />
+          </g>
+        </svg>
+      </div>
+
+      <!-- Card 1: LEAD ENTRA -->
+      <div class="pcard" data-pi="0">
+        <div class="pcard-label">Lead<br/>Entra</div>
+        <div class="pcard-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="24" cy="17" r="7"/>
+            <path d="M10 40c0-7 6-12 14-12s14 5 14 12"/>
+          </svg>
+        </div>
+      </div>
+      <div class="pcard-arrow">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="16" x2="26" y2="16"/>
+          <polyline points="20,10 26,16 20,22"/>
+        </svg>
+      </div>
+
+      <!-- Card 2: IA QUALIFICA -->
+      <div class="pcard" data-pi="1">
+        <div class="pcard-label">IA<br/>Qualifica</div>
+        <div class="pcard-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 12c-3 0-6 3-6 6 0 2 1 4 2 5l-1 9h22l-1-9c1-1 2-3 2-5 0-3-3-6-6-6"/>
+            <line x1="18" y1="20" x2="30" y2="20"/>
+            <line x1="18" y1="26" x2="30" y2="26"/>
+            <circle cx="18" cy="14" r="2.5" fill="currentColor"/>
+            <circle cx="30" cy="14" r="2.5" fill="currentColor"/>
+          </svg>
+        </div>
+      </div>
+      <div class="pcard-arrow">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="16" x2="26" y2="16"/>
+          <polyline points="20,10 26,16 20,22"/>
+        </svg>
+      </div>
+
+      <!-- Card 3: CRM ATUALIZA -->
+      <div class="pcard" data-pi="2">
+        <div class="pcard-label">CRM<br/>Atualiza</div>
+        <div class="pcard-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="24" cy="12" rx="14" ry="5"/>
+            <path d="M10 12v10c0 3 6 5 14 5s14-2 14-5V12"/>
+            <path d="M10 22v10c0 3 6 5 14 5s14-2 14-5V22"/>
+          </svg>
+        </div>
+      </div>
+      <div class="pcard-arrow">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="16" x2="26" y2="16"/>
+          <polyline points="20,10 26,16 20,22"/>
+        </svg>
+      </div>
+
+      <!-- Card 4: MENSAGEM AUTOMÁTICA -->
+      <div class="pcard" data-pi="3">
+        <div class="pcard-label">Mensagem<br/>Automática</div>
+        <div class="pcard-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M42 6L22 26"/>
+            <path d="M42 6L30 42l-8-16-16-8z"/>
+          </svg>
+        </div>
+      </div>
+      <div class="pcard-arrow">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="16" x2="26" y2="16"/>
+          <polyline points="20,10 26,16 20,22"/>
+        </svg>
+      </div>
+
+      <!-- Card 5: CONTRATO ENVIADO + check -->
+      <div class="pcard" data-pi="4">
+        <div class="pcard-label">Contrato<br/>Enviado</div>
+        <div class="pcard-icon">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 6h16l8 8v28H14z"/>
+            <polyline points="30,6 30,14 38,14"/>
+            <line x1="19" y1="24" x2="33" y2="24"/>
+            <line x1="19" y1="30" x2="33" y2="30"/>
+            <line x1="19" y1="36" x2="27" y2="36"/>
+          </svg>
+        </div>
+        <div class="pcard-check">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3,7 6,10 11,4"/>
+          </svg>
+        </div>
+      </div>
     </div>
 
     <div id="funnel-pin-wrap">
@@ -884,22 +991,34 @@
     { opacity: 0.5, scale: 1, clipPath: 'inset(0 0% 0 0)', ease: 'none',
       scrollTrigger: { trigger: '#clip-reveal', start: 'top bottom', end: 'top 30%', scrub: 1 } });
 
-  // FUNNEL pipeline — 5 cards surgem em sequência (timeline + restart no enter)
+  // FUNNEL pipeline HTML — 5 cards + setas + check surgem em sequência
   (function initPipeline(){
-    const wrap = document.querySelector('.funnel-pipeline-img');
+    const wrap = document.getElementById('pipeline-html');
     if (!wrap) return;
-    const masks = wrap.querySelectorAll('.pipeline-mask');
-    gsap.set(masks, { opacity: 1, scaleX: 1, transformOrigin: 'right center' });
+    const cards = wrap.querySelectorAll('.pcard');
+    const arrows = wrap.querySelectorAll('.pcard-arrow');
+    const check = wrap.querySelector('.pcard-check');
+
+    gsap.set(cards, { opacity: 0, y: 30, scale: 0.85 });
+    gsap.set(arrows, { opacity: 0, scale: 0.4, x: -8 });
+    if (check) gsap.set(check, { opacity: 0, scale: 0 });
 
     const tl = gsap.timeline({ paused: true });
-    masks.forEach((m, i) => {
-      tl.to(m, { opacity: 0, scaleX: 0, duration: 0.7, ease: 'power3.out' }, i * 0.32);
+    cards.forEach((c, i) => {
+      tl.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'back.out(1.6)' }, i * 0.32);
+      tl.add(() => cards.forEach((cc, j) => { if (j <= i) cc.classList.add('active'); }), i * 0.32 + 0.15);
+      if (arrows[i]) {
+        tl.to(arrows[i], { opacity: 0.7, scale: 1, x: 0, duration: 0.4, ease: 'power3.out' }, i * 0.32 + 0.35);
+      }
     });
-    tl.call(() => wrap.classList.add('revealed'));
+    if (check) tl.to(check, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2)' }, cards.length * 0.32 + 0.1);
 
     const ioPipe = new IntersectionObserver(entries => {
       entries.forEach(e => {
-        if (e.isIntersecting) { wrap.classList.remove('revealed'); tl.restart(); }
+        if (e.isIntersecting) {
+          cards.forEach(c => c.classList.remove('active'));
+          tl.restart();
+        }
       });
     }, { threshold: 0.25 });
     ioPipe.observe(wrap);
