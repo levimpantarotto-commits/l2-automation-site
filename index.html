@@ -7,8 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;700;900&family=Playfair+Display:ital,wght@1,400;1,600&display=swap" rel="stylesheet"/>
-  <!-- Pré-carrega o primeiro frame do córtex com prioridade alta -->
-  <link rel="preload" as="image" href="cortex-frames/frame_001.webp" fetchpriority="high" type="image/webp"/>
   <style>
     :root{
       --black:#08080A; --black2:#0D0D10; --gold:#D4AF37;
@@ -71,13 +69,7 @@
     .clip-inner{position:relative;background:linear-gradient(135deg,#0f0f12 0%,#18140a 100%);display:flex;gap:80px;align-items:center;justify-content:center;padding:80px;clip-path:circle(35% at 50% 50%);will-change:clip-path,opacity;width:100%;max-width:1400px;min-height:60vh;}
     .clip-text{flex:1;max-width:560px;}
     .brain-small-wrap{flex-shrink:0;width:320px;height:320px;position:relative;}
-    #neural-net{width:100%;height:100%;display:block;overflow:visible;}
-    #neural-net .ne{stroke-dasharray:300;stroke-dashoffset:300;}
-    #neural-net .nn{opacity:0;transform-origin:center;transform-box:fill-box;}
-    #neural-net .neural-core{transform-origin:center;transform-box:fill-box;animation:core-pulse 2.4s ease-in-out infinite;}
-    #neural-net .neural-core-glow{transform-origin:center;transform-box:fill-box;animation:core-glow 2.4s ease-in-out infinite;}
-    @keyframes core-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.25);}}
-    @keyframes core-glow{0%,100%{opacity:.3;transform:scale(.9);}50%{opacity:.7;transform:scale(1.15);}}
+    #neural-canvas{width:100%;height:100%;display:block;}
     .clip-h2{font-size:clamp(30px,4vw,54px);font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:40px;}
     .clip-h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
     .clip-aside{display:flex;flex-direction:column;gap:22px;}
@@ -196,7 +188,11 @@
     .reveal{opacity:0;}
 
     /* ══ BACKGROUNDS ANIMADOS (imagens cinematic em cada seção) ══ */
-    .bg-image{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;will-change:transform,opacity;z-index:0;opacity:0;}
+    .bg-image{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;will-change:transform;z-index:0;opacity:.42;}
+    #osia .bg-image{opacity:.55;}
+    #agents .bg-image{opacity:.38;}
+    #cta .bg-image{opacity:.42;}
+    #clip-reveal .bg-image{opacity:.5;}
     .bg-image::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(8,8,10,.55) 80%,rgba(8,8,10,.92) 100%);}
     .bg-image-inner{position:absolute;inset:-10%;background-size:cover;background-position:center;will-change:transform;}
 
@@ -216,9 +212,8 @@
     .pipeline-bg-flow{position:absolute;inset:0;pointer-events:none;opacity:.35;overflow:hidden;}
     .pipeline-bg-flow svg{position:absolute;top:0;left:0;width:200%;height:100%;animation:bgFlow 24s linear infinite;}
     @keyframes bgFlow { 0%{transform:translateX(0);} 100%{transform:translateX(-50%);} }
-    .pcard{flex:1;background:rgba(8,8,10,.78);border:1px solid rgba(212,175,55,.18);border-radius:6px;padding:24px 12px 22px;text-align:center;position:relative;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;backdrop-filter:blur(2px);transition:border-color .5s,box-shadow .5s,background .5s;z-index:2;will-change:transform,opacity;}
-    .pcard.active{border-color:rgba(212,175,55,.55);box-shadow:0 0 36px -10px rgba(212,175,55,.4),inset 0 0 0 1px rgba(212,175,55,.08);background:rgba(13,13,16,.92);}
-    .pcard.active .pcard-icon{filter:drop-shadow(0 0 8px rgba(212,175,55,.6));}
+    .pcard{flex:1;background:rgba(8,8,10,.78);border:1px solid rgba(212,175,55,.16);border-radius:6px;padding:24px 12px 22px;text-align:center;position:relative;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;backdrop-filter:blur(2px);transition:border-color .8s ease,box-shadow .8s ease;z-index:2;will-change:transform,opacity;}
+    .pcard.active{border-color:rgba(212,175,55,.32);box-shadow:0 0 0 1px rgba(212,175,55,.06);}
     .pcard-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;line-height:1.5;}
     .pcard-icon{width:48px;height:48px;color:var(--gold);transition:filter .5s;}
     .pcard-icon svg{width:100%;height:100%;}
@@ -385,69 +380,13 @@
         </div>
       </div>
       <div class="brain-small-wrap">
-        <svg id="neural-net" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <!-- Glow defs -->
-          <defs>
-            <filter id="goldGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="2.5" result="blur"/>
-              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <radialGradient id="coreGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stop-color="#D4AF37" stop-opacity="1"/>
-              <stop offset="60%" stop-color="#D4AF37" stop-opacity="0.6"/>
-              <stop offset="100%" stop-color="#D4AF37" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-
-          <!-- Conexões (linhas que se desenham via stroke-dashoffset) -->
-          <g class="neural-edges" stroke="#D4AF37" stroke-width="1" stroke-linecap="round" filter="url(#goldGlow)" opacity="0.65">
-            <line class="ne" x1="160" y1="160" x2="60" y2="80"/>
-            <line class="ne" x1="160" y1="160" x2="260" y2="80"/>
-            <line class="ne" x1="160" y1="160" x2="60" y2="240"/>
-            <line class="ne" x1="160" y1="160" x2="260" y2="240"/>
-            <line class="ne" x1="160" y1="160" x2="160" y2="40"/>
-            <line class="ne" x1="160" y1="160" x2="160" y2="280"/>
-            <line class="ne" x1="160" y1="160" x2="40" y2="160"/>
-            <line class="ne" x1="160" y1="160" x2="280" y2="160"/>
-            <line class="ne" x1="60" y1="80" x2="160" y2="40"/>
-            <line class="ne" x1="160" y1="40" x2="260" y2="80"/>
-            <line class="ne" x1="260" y1="80" x2="280" y2="160"/>
-            <line class="ne" x1="280" y1="160" x2="260" y2="240"/>
-            <line class="ne" x1="260" y1="240" x2="160" y2="280"/>
-            <line class="ne" x1="160" y1="280" x2="60" y2="240"/>
-            <line class="ne" x1="60" y1="240" x2="40" y2="160"/>
-            <line class="ne" x1="40" y1="160" x2="60" y2="80"/>
-            <line class="ne" x1="60" y1="80" x2="260" y2="240"/>
-            <line class="ne" x1="260" y1="80" x2="60" y2="240"/>
-          </g>
-
-          <!-- Núcleo central com pulso -->
-          <circle cx="160" cy="160" r="35" fill="url(#coreGrad)" opacity="0.4" class="neural-core-glow"/>
-          <circle cx="160" cy="160" r="9" fill="#D4AF37" filter="url(#goldGlow)" class="neural-core"/>
-
-          <!-- Nós (aparecem em sequência) -->
-          <g class="neural-nodes" fill="#D4AF37" filter="url(#goldGlow)">
-            <circle class="nn" cx="60"  cy="80"  r="4.5"/>
-            <circle class="nn" cx="260" cy="80"  r="4.5"/>
-            <circle class="nn" cx="60"  cy="240" r="4.5"/>
-            <circle class="nn" cx="260" cy="240" r="4.5"/>
-            <circle class="nn" cx="160" cy="40"  r="3.5"/>
-            <circle class="nn" cx="160" cy="280" r="3.5"/>
-            <circle class="nn" cx="40"  cy="160" r="3.5"/>
-            <circle class="nn" cx="280" cy="160" r="3.5"/>
-          </g>
-
-          <!-- Anéis orbitais sutis -->
-          <circle cx="160" cy="160" r="100" stroke="#D4AF37" stroke-width="0.4" opacity="0.15" stroke-dasharray="3 6"/>
-          <circle cx="160" cy="160" r="140" stroke="#D4AF37" stroke-width="0.3" opacity="0.1" stroke-dasharray="2 8"/>
-        </svg>
+        <canvas id="neural-canvas"></canvas>
       </div>
     </div>
   </section>
 
   <!-- ④.5 OSIA — Sistema Operacional de IA Integrada -->
   <section id="osia">
-    <div class="bg-image" id="osia-bg"></div>
     <svg class="osia-bg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice">
       <defs><pattern id="osiaHex" x="0" y="0" width="70" height="61" patternUnits="userSpaceOnUse">
         <polygon points="35,3 65,18 65,48 35,63 5,48 5,18" fill="none" stroke="#D4AF37" stroke-width=".7"/>
@@ -731,7 +670,6 @@
 
   <!-- ⑥ AGENTES -->
   <section id="agents">
-    <div class="bg-image" id="agents-bg"></div>
     <div class="agents-header">
       <p class="sec-label reveal">Os Agentes</p>
       <h2 class="agents-h2 reveal">A equipe que nunca para de trabalhar.</h2>
@@ -831,7 +769,6 @@
 
   <!-- ⑧ CTA -->
   <section id="cta">
-    <div class="bg-image" id="cta-bg"></div>
     <div class="cta-glow"></div>
     <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.04;pointer-events:none;" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
       <defs><pattern id="hexCta" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
@@ -870,128 +807,139 @@
   gsap.ticker.lagSmoothing(0);
 
   /* ═══════════════════════════════════════════
-     CORTEX — Vídeo scroll-driven no Hero (121 frames WebP)
+     PARTICLE NETWORK — partículas se movendo + conectando dinamicamente
+     Estilo Stripe/Linear. Leve (~35 partículas), zero dependência de assets externos.
   ═══════════════════════════════════════════ */
-  (function initCortexScrollVideo(){
-    const canvas = document.getElementById('brain-canvas');
+  function createParticleNetwork(canvas, opts){
     const ctx = canvas.getContext('2d');
-    const FRAME_COUNT = 121;
-    const frames = [];
-    let lastFrameIdx = -1;
-    let firstFrameReady = false;
+    const o = Object.assign({
+      count: 35,            // número de partículas
+      maxDist: 0.18,        // distância máx pra conectar (proporção da menor dimensão)
+      speed: 0.18,          // velocidade base
+      colorBase: '212,175,55',  // dourado
+      lineOpacity: 0.32,
+      pointSize: 1.3,
+      glowChance: 0.18,     // % das partículas com glow extra
+      pauseWhenOffscreen: true
+    }, opts || {});
 
-    function frameUrl(i){ return `cortex-frames/frame_${String(i).padStart(3,'0')}.webp`; }
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W = 0, H = 0, maxDistPx = 0;
+    let particles = [];
+    let rafId = null;
+    let isVisible = true;
 
-    function resizeCanvas(){
-      const parent = canvas.parentElement;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = parent.offsetWidth || 600;
-      const h = parent.offsetHeight || window.innerHeight;
-      canvas.width  = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      canvas.style.width  = w + 'px';
+    function resize(){
+      const w = canvas.parentElement.offsetWidth || canvas.offsetWidth || 600;
+      const h = canvas.parentElement.offsetHeight || canvas.offsetHeight || 400;
+      canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
-      if (lastFrameIdx >= 0) drawFrame(lastFrameIdx, true);
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      W = canvas.width;
+      H = canvas.height;
+      maxDistPx = Math.min(W, H) * o.maxDist;
     }
 
-    function drawFrame(index, force){
-      const idx = Math.max(0, Math.min(FRAME_COUNT - 1, Math.floor(index)));
-      if (!force && idx === lastFrameIdx) return;
-      const img = frames[idx];
-      if (!img || !img.complete || img.naturalWidth === 0) return;
-      const cw = canvas.width, ch = canvas.height;
-      const iw = img.naturalWidth, ih = img.naturalHeight;
-      // Cover fit (preserva proporção, preenche o canvas)
-      const scale = Math.max(cw / iw, ch / ih);
-      const dw = iw * scale, dh = ih * scale;
-      const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
-      ctx.clearRect(0, 0, cw, ch);
-      ctx.drawImage(img, dx, dy, dw, dh);
-      lastFrameIdx = idx;
+    function spawn(){
+      particles = [];
+      for (let i = 0; i < o.count; i++){
+        particles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * o.speed * dpr * 2,
+          vy: (Math.random() - 0.5) * o.speed * dpr * 2,
+          r: (Math.random() * o.pointSize + 0.6) * dpr,
+          glow: Math.random() < o.glowChance,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
     }
 
-    function preload(){
-      // Frame 1: prioridade máxima — desenha assim que carregar
-      const first = new Image();
-      first.fetchPriority = 'high';
-      first.decoding = 'async';
-      first.onload = () => { firstFrameReady = true; drawFrame(0, true); preloadRest(); };
-      first.src = frameUrl(1);
-      frames[0] = first;
-      // Reserva slots dos outros (vazios até preloadRest disparar)
-      for (let i = 1; i < FRAME_COUNT; i++) frames[i] = null;
-    }
+    function frame(){
+      if (!isVisible) { rafId = requestAnimationFrame(frame); return; }
+      ctx.clearRect(0, 0, W, H);
 
-    function preloadRest(){
-      // Demais frames carregam em background, em batches pequenos pra não brigar com outros assets
-      let i = 2;
-      function loadBatch(){
-        const BATCH = 6; // 6 paralelos por vez
-        const batchEnd = Math.min(i + BATCH, FRAME_COUNT + 1);
-        let loaded = 0;
-        for (; i < batchEnd; i++) {
-          const img = new Image();
-          img.decoding = 'async';
-          img.fetchPriority = 'low';
-          const idx = i;
-          img.onload = img.onerror = () => { loaded++; if (loaded === BATCH || idx === FRAME_COUNT) loadBatch(); };
-          img.src = frameUrl(idx);
-          frames[idx - 1] = img;
+      // Move + bounce
+      for (let i = 0; i < particles.length; i++){
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) { p.x = 0; p.vx *= -1; }
+        else if (p.x > W) { p.x = W; p.vx *= -1; }
+        if (p.y < 0) { p.y = 0; p.vy *= -1; }
+        else if (p.y > H) { p.y = H; p.vy *= -1; }
+        p.phase += 0.018;
+      }
+
+      // Linhas conectoras (par a par)
+      ctx.lineWidth = 0.6 * dpr;
+      for (let i = 0; i < particles.length; i++){
+        const a = particles[i];
+        for (let j = i + 1; j < particles.length; j++){
+          const b = particles[j];
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d < maxDistPx){
+            const alpha = (1 - d / maxDistPx) * o.lineOpacity;
+            ctx.strokeStyle = `rgba(${o.colorBase},${alpha.toFixed(3)})`;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
         }
       }
-      loadBatch();
+
+      // Partículas
+      for (let i = 0; i < particles.length; i++){
+        const p = particles[i];
+        if (p.glow){
+          const breathe = 0.7 + Math.sin(p.phase) * 0.3;
+          ctx.shadowColor = `rgba(${o.colorBase},${(0.5 * breathe).toFixed(3)})`;
+          ctx.shadowBlur = 8 * dpr;
+          ctx.fillStyle = `rgba(${o.colorBase},${(0.85 * breathe + 0.15).toFixed(3)})`;
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = `rgba(${o.colorBase},0.7)`;
+        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+
+      rafId = requestAnimationFrame(frame);
     }
 
     function start(){
-      resizeCanvas();
-      preload();
-      // ScrollTrigger: avança frame conforme o usuário rola dentro do hero
-      gsap.to({ f: 0 }, {
-        f: FRAME_COUNT - 1,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: '#hero',
-          start: 'top top',
-          end: 'bottom top',
-          scrub: 0.4
-        },
-        onUpdate(){ drawFrame(this.targets()[0].f); }
-      });
+      resize();
+      spawn();
+      if (rafId) cancelAnimationFrame(rafId);
+      frame();
     }
 
-    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('resize', () => { resize(); spawn(); });
+    if (o.pauseWhenOffscreen && 'IntersectionObserver' in window){
+      const io = new IntersectionObserver(([e]) => { isVisible = e.isIntersecting; }, { threshold: 0 });
+      io.observe(canvas);
+    }
     if (document.readyState === 'complete') start();
     else window.addEventListener('load', start);
-  })();
+  }
 
-  /* ═══════════════════════════════════════════
-     CINEMATIC BACKGROUNDS — imagens animadas scroll-driven
-  ═══════════════════════════════════════════ */
-  // OSIA — Esfera neural explosiva: fade in + slow zoom + parallax
-  gsap.fromTo('#osia-bg',
-    { opacity: 0, scale: 1.15, y: -50 },
-    { opacity: 0.55, scale: 1, y: 50, ease: 'none',
-      scrollTrigger: { trigger: '#osia', start: 'top bottom', end: 'bottom top', scrub: 1 } });
+  // Hero (canvas grande)
+  const heroCanvas = document.getElementById('brain-canvas');
+  if (heroCanvas) createParticleNetwork(heroCanvas, { count: 38, maxDist: 0.22, glowChance: 0.2 });
 
-  // AGENTES — Núcleo L2 com módulos: parallax + zoom suave
-  gsap.fromTo('#agents-bg',
-    { opacity: 0, scale: 1.18, y: -40 },
-    { opacity: 0.4, scale: 1, y: 40, ease: 'none',
-      scrollTrigger: { trigger: '#agents', start: 'top bottom', end: 'bottom top', scrub: 1 } });
+  // Manifesto (canvas pequeno 320x320)
+  const neuralCanvas = document.getElementById('neural-canvas');
+  if (neuralCanvas) createParticleNetwork(neuralCanvas, { count: 22, maxDist: 0.32, glowChance: 0.25, pointSize: 1.5 });
 
-  // CTA — 4 figuras agentes: fade + parallax lento
-  gsap.fromTo('#cta-bg',
-    { opacity: 0, scale: 1.12, y: -30 },
-    { opacity: 0.35, scale: 1, y: 30, ease: 'none',
-      scrollTrigger: { trigger: '#cta', start: 'top bottom', end: 'bottom top', scrub: 1.2 } });
+  /* Backgrounds das seções: opacidade fixa via CSS + Ken Burns sutil contínuo via keyframes.
+     Sem fade-in scroll-driven, sem parallax exagerado — discreto e profissional. */
 
-  // MANIFESTO — L2 hub spreading: reveal por clip + parallax
-  gsap.fromTo('#clip-bg',
-    { opacity: 0, scale: 1.1, clipPath: 'inset(0 100% 0 0)' },
-    { opacity: 0.5, scale: 1, clipPath: 'inset(0 0% 0 0)', ease: 'none',
-      scrollTrigger: { trigger: '#clip-reveal', start: 'top bottom', end: 'top 30%', scrub: 1 } });
-
-  // FUNNEL pipeline HTML — 5 cards + setas + check surgem em sequência
+  // FUNNEL pipeline HTML — 5 cards + setas + check (animação Apple-style: sutil, sem bounce)
   (function initPipeline(){
     const wrap = document.getElementById('pipeline-html');
     if (!wrap) return;
@@ -999,19 +947,19 @@
     const arrows = wrap.querySelectorAll('.pcard-arrow');
     const check = wrap.querySelector('.pcard-check');
 
-    gsap.set(cards, { opacity: 0, y: 30, scale: 0.85 });
-    gsap.set(arrows, { opacity: 0, scale: 0.4, x: -8 });
-    if (check) gsap.set(check, { opacity: 0, scale: 0 });
+    gsap.set(cards, { opacity: 0, y: 12 });
+    gsap.set(arrows, { opacity: 0 });
+    if (check) gsap.set(check, { opacity: 0 });
 
     const tl = gsap.timeline({ paused: true });
     cards.forEach((c, i) => {
-      tl.to(c, { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: 'back.out(1.6)' }, i * 0.32);
-      tl.add(() => cards.forEach((cc, j) => { if (j <= i) cc.classList.add('active'); }), i * 0.32 + 0.15);
+      tl.to(c, { opacity: 1, y: 0, duration: 0.9, ease: 'expo.out' }, i * 0.1);
+      tl.add(() => c.classList.add('active'), i * 0.1 + 0.45);
       if (arrows[i]) {
-        tl.to(arrows[i], { opacity: 0.7, scale: 1, x: 0, duration: 0.4, ease: 'power3.out' }, i * 0.32 + 0.35);
+        tl.to(arrows[i], { opacity: 0.5, duration: 0.6, ease: 'power2.out' }, i * 0.1 + 0.35);
       }
     });
-    if (check) tl.to(check, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(2)' }, cards.length * 0.32 + 0.1);
+    if (check) tl.to(check, { opacity: 1, duration: 0.6, ease: 'power2.out' }, cards.length * 0.1 + 0.2);
 
     const ioPipe = new IntersectionObserver(entries => {
       entries.forEach(e => {
@@ -1020,36 +968,11 @@
           tl.restart();
         }
       });
-    }, { threshold: 0.25 });
+    }, { threshold: 0.2 });
     ioPipe.observe(wrap);
   })();
 
-  /* ═══════════════════════════════════════════
-     NEURAL NET — Rede SVG (timeline + toggleActions, anima sempre que entra)
-  ═══════════════════════════════════════════ */
-  (function initNeuralNet(){
-    const svg = document.getElementById('neural-net');
-    if (!svg) return;
-    const edges = svg.querySelectorAll('.ne');
-    const nodes = svg.querySelectorAll('.nn');
-
-    gsap.set(edges, { strokeDashoffset: 300, opacity: 0 });
-    gsap.set(nodes, { opacity: 0, scale: 0, transformOrigin: 'center', transformBox: 'fill-box' });
-
-    const tl = gsap.timeline({ paused: true });
-    edges.forEach((edge, i) => {
-      tl.to(edge, { opacity: 0.65, duration: 0.1, ease: 'none' }, i * 0.08)
-        .to(edge, { strokeDashoffset: 0, duration: 0.8, ease: 'power2.out' }, i * 0.08);
-    });
-    nodes.forEach((node, i) => {
-      tl.to(node, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.6)' }, 1.6 + i * 0.1);
-    });
-
-    const ioNet = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) tl.restart(); });
-    }, { threshold: 0.25 });
-    ioNet.observe(svg);
-  })();
+  /* Rede neural SVG primitiva removida — substituída pelo particle network canvas (initParticleNetwork) */
 
   /* ── Logo draw animation (hero + nav, in parallel) ── */
   const heroPath    = document.getElementById('hero-logo-path');
@@ -1100,10 +1023,10 @@
   (function initOsiaLetters(){
     const letters = document.querySelectorAll('#osia-letters span');
     if (!letters.length) return;
-    gsap.set(letters, { opacity: 0, y: 140, scale: .4 });
+    gsap.set(letters, { opacity: 0, y: 30, scale: 0.92 });
     const tl = gsap.timeline({ paused: true });
     letters.forEach((l, i) => {
-      tl.to(l, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: 'power4.out' }, i * 0.16);
+      tl.to(l, { opacity: 1, y: 0, scale: 1, duration: 1.1, ease: 'expo.out' }, i * 0.08);
     });
     const ioOsia = new IntersectionObserver(entries => {
       entries.forEach(e => { if (e.isIntersecting) tl.restart(); });
@@ -1216,7 +1139,7 @@
     gsap.set(ring, { strokeDashoffset: circ });
     num.textContent = '0' + suffix;
     const tween = gsap.to(proxy, {
-      v: 1, duration: 2.4, ease: 'power2.out', paused: true, delay: i * 0.18,
+      v: 1, duration: 2.0, ease: 'expo.out', paused: true, delay: i * 0.08,
       onUpdate(){
         ring.style.strokeDashoffset = (circ - (circ - targetOffset) * proxy.v).toFixed(1);
         num.textContent = Math.round(targetNum * proxy.v) + suffix;
