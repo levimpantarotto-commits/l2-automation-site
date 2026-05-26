@@ -778,15 +778,79 @@
     draw();
   }
 
-  // Hero brain (large)
-  const heroCanvas = document.getElementById('brain-canvas');
-  function initHeroBrain() {
-    heroCanvas.width  = heroCanvas.parentElement.offsetWidth  || 600;
-    heroCanvas.height = heroCanvas.parentElement.offsetHeight || window.innerHeight;
-    createBrain(heroCanvas, 600, 0.004);
-  }
-  if (document.readyState === 'complete') initHeroBrain();
-  else window.addEventListener('load', initHeroBrain);
+  /* ═══════════════════════════════════════════
+     CORTEX — Vídeo scroll-driven no Hero (121 frames WebP)
+  ═══════════════════════════════════════════ */
+  (function initCortexScrollVideo(){
+    const canvas = document.getElementById('brain-canvas');
+    const ctx = canvas.getContext('2d');
+    const FRAME_COUNT = 121;
+    const frames = [];
+    let lastFrameIdx = -1;
+    let firstFrameReady = false;
+
+    function frameUrl(i){ return `cortex-frames/frame_${String(i).padStart(3,'0')}.webp`; }
+
+    function resizeCanvas(){
+      const parent = canvas.parentElement;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = parent.offsetWidth || 600;
+      const h = parent.offsetHeight || window.innerHeight;
+      canvas.width  = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width  = w + 'px';
+      canvas.style.height = h + 'px';
+      if (lastFrameIdx >= 0) drawFrame(lastFrameIdx, true);
+    }
+
+    function drawFrame(index, force){
+      const idx = Math.max(0, Math.min(FRAME_COUNT - 1, Math.floor(index)));
+      if (!force && idx === lastFrameIdx) return;
+      const img = frames[idx];
+      if (!img || !img.complete || img.naturalWidth === 0) return;
+      const cw = canvas.width, ch = canvas.height;
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      // Cover fit (preserva proporção, preenche o canvas)
+      const scale = Math.max(cw / iw, ch / ih);
+      const dw = iw * scale, dh = ih * scale;
+      const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, dx, dy, dw, dh);
+      lastFrameIdx = idx;
+    }
+
+    function preload(){
+      for (let i = 1; i <= FRAME_COUNT; i++) {
+        const img = new Image();
+        img.src = frameUrl(i);
+        if (i === 1) {
+          img.onload = () => { firstFrameReady = true; drawFrame(0, true); };
+        }
+        frames.push(img);
+      }
+    }
+
+    function start(){
+      resizeCanvas();
+      preload();
+      // ScrollTrigger: avança frame conforme o usuário rola dentro do hero
+      gsap.to({ f: 0 }, {
+        f: FRAME_COUNT - 1,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '#hero',
+          start: 'top top',
+          end: 'bottom top',
+          scrub: 0.4
+        },
+        onUpdate(){ drawFrame(this.targets()[0].f); }
+      });
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    if (document.readyState === 'complete') start();
+    else window.addEventListener('load', start);
+  })();
 
   // Manifesto brain (small)
   const smallCanvas = document.getElementById('brain-small');

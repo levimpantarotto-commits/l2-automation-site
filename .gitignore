@@ -2,3 +2,6 @@
 .DS_Store
 Thumbs.db
 *.log
+# Vídeos fonte ficam locais — só os frames vão pro deploy
+*.mp4
+*.mov
