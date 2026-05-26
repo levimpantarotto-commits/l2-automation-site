@@ -194,6 +194,21 @@
 
     .reveal{opacity:0;}
 
+    /* ══ BACKGROUNDS ANIMADOS (imagens cinematic em cada seção) ══ */
+    .bg-image{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;pointer-events:none;will-change:transform,opacity;z-index:0;opacity:0;}
+    .bg-image::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(8,8,10,.65) 80%,rgba(8,8,10,.95) 100%);}
+    #osia .bg-image{background-image:url('img/bg-osia.webp');opacity:0;will-change:transform,opacity;}
+    #agents .bg-image{background-image:url('img/bg-agents.webp');}
+    #cta .bg-image{background-image:url('img/bg-cta.webp');}
+    #clip-reveal .bg-image{background-image:url('img/bg-manifesto.webp');}
+    /* Funnel: imagem do pipeline no header, centralizada */
+    .funnel-pipeline-img{display:block;width:100%;max-width:1100px;margin:0 auto 80px;border-radius:6px;overflow:hidden;position:relative;}
+    .funnel-pipeline-img img{display:block;width:100%;height:auto;clip-path:inset(0 100% 0 0);will-change:clip-path;}
+    /* Garante que o conteúdo das seções fica acima do bg */
+    #osia .osia-inner, #agents .agents-header, #agents .agents-grid,
+    #cta .cta-glow, #cta .cta-h2, #cta .cta-sub, #cta .cta-btn,
+    #clip-reveal .clip-inner{position:relative;z-index:2;}
+
     /* Acessibilidade — quem desabilita animação no SO recebe versão estática */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
@@ -333,6 +348,7 @@
 
   <!-- ④ CLIP REVEAL — manifesto com cérebro menor -->
   <section id="clip-reveal">
+    <div class="bg-image" id="clip-bg"></div>
     <div class="clip-inner" id="clip-inner">
       <div class="clip-text">
         <p class="sec-label">Manifesto</p>
@@ -405,6 +421,7 @@
 
   <!-- ④.5 OSIA — Sistema Operacional de IA Integrada -->
   <section id="osia">
+    <div class="bg-image" id="osia-bg"></div>
     <svg class="osia-bg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice">
       <defs><pattern id="osiaHex" x="0" y="0" width="70" height="61" patternUnits="userSpaceOnUse">
         <polygon points="35,3 65,18 65,48 35,63 5,48 5,18" fill="none" stroke="#D4AF37" stroke-width=".7"/>
@@ -453,6 +470,10 @@
         <h2 class="flow-h2">Do lead ao<br/>fechamento, <em>automático.</em></h2>
       </div>
       <p class="flow-desc">Cada etapa do seu funil é coberta por um agente especializado. Sem gaps, sem custo humano em tarefas repetitivas.</p>
+    </div>
+
+    <div class="funnel-pipeline-img">
+      <img src="img/bg-funnel.webp" alt="Pipeline L2: Lead Entra → IA Qualifica → CRM Atualiza → Mensagem Automática → Contrato Enviado" id="funnel-pipeline-img"/>
     </div>
 
     <div id="funnel-pin-wrap">
@@ -579,6 +600,7 @@
 
   <!-- ⑥ AGENTES -->
   <section id="agents">
+    <div class="bg-image" id="agents-bg"></div>
     <div class="agents-header">
       <p class="sec-label reveal">Os Agentes</p>
       <h2 class="agents-h2 reveal">A equipe que nunca para de trabalhar.</h2>
@@ -672,6 +694,7 @@
 
   <!-- ⑧ CTA -->
   <section id="cta">
+    <div class="bg-image" id="cta-bg"></div>
     <div class="cta-glow"></div>
     <svg style="position:absolute;inset:0;width:100%;height:100%;opacity:.04;pointer-events:none;" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice">
       <defs><pattern id="hexCta" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
@@ -803,6 +826,38 @@
     if (document.readyState === 'complete') start();
     else window.addEventListener('load', start);
   })();
+
+  /* ═══════════════════════════════════════════
+     CINEMATIC BACKGROUNDS — imagens animadas scroll-driven
+  ═══════════════════════════════════════════ */
+  // OSIA — Esfera neural explosiva: fade in + slow zoom + parallax
+  gsap.fromTo('#osia-bg',
+    { opacity: 0, scale: 1.15, y: -50 },
+    { opacity: 0.55, scale: 1, y: 50, ease: 'none',
+      scrollTrigger: { trigger: '#osia', start: 'top bottom', end: 'bottom top', scrub: 1 } });
+
+  // AGENTES — Núcleo L2 com módulos: parallax + zoom suave
+  gsap.fromTo('#agents-bg',
+    { opacity: 0, scale: 1.18, y: -40 },
+    { opacity: 0.4, scale: 1, y: 40, ease: 'none',
+      scrollTrigger: { trigger: '#agents', start: 'top bottom', end: 'bottom top', scrub: 1 } });
+
+  // CTA — 4 figuras agentes: fade + parallax lento
+  gsap.fromTo('#cta-bg',
+    { opacity: 0, scale: 1.12, y: -30 },
+    { opacity: 0.35, scale: 1, y: 30, ease: 'none',
+      scrollTrigger: { trigger: '#cta', start: 'top bottom', end: 'bottom top', scrub: 1.2 } });
+
+  // MANIFESTO — L2 hub spreading: reveal por clip + parallax
+  gsap.fromTo('#clip-bg',
+    { opacity: 0, scale: 1.1, clipPath: 'inset(0 100% 0 0)' },
+    { opacity: 0.5, scale: 1, clipPath: 'inset(0 0% 0 0)', ease: 'none',
+      scrollTrigger: { trigger: '#clip-reveal', start: 'top bottom', end: 'top 30%', scrub: 1 } });
+
+  // FUNNEL pipeline image — clip reveal da esquerda pra direita
+  gsap.to('#funnel-pipeline-img',
+    { clipPath: 'inset(0 0% 0 0)', ease: 'none',
+      scrollTrigger: { trigger: '.funnel-pipeline-img', start: 'top 80%', end: 'top 30%', scrub: 0.8 } });
 
   /* ═══════════════════════════════════════════
      NEURAL NET — Rede SVG scroll-driven no Manifesto (timeline scrub)

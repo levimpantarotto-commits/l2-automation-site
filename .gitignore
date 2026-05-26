@@ -2,6 +2,12 @@
 .DS_Store
 Thumbs.db
 *.log
+*.mp4
+*.mov
+# PNGs originais do ChatGPT ficam locais — só as versões otimizadas (img/) vão pro deploy
+ChatGPT*.png
+*.png
+!cortex-frames/*.png
 # Vídeos fonte ficam locais — só os frames vão pro deploy
 *.mp4
 *.mov
