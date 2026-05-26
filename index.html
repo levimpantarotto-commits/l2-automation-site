@@ -7,6 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;700;900&family=Playfair+Display:ital,wght@1,400;1,600&display=swap" rel="stylesheet"/>
+  <!-- Pré-carrega o primeiro frame do córtex com prioridade alta -->
+  <link rel="preload" as="image" href="cortex-frames/frame_001.webp" fetchpriority="high" type="image/webp"/>
   <style>
     :root{
       --black:#08080A; --black2:#0D0D10; --gold:#D4AF37;
@@ -688,14 +690,35 @@
     }
 
     function preload(){
-      for (let i = 1; i <= FRAME_COUNT; i++) {
-        const img = new Image();
-        img.src = frameUrl(i);
-        if (i === 1) {
-          img.onload = () => { firstFrameReady = true; drawFrame(0, true); };
+      // Frame 1: prioridade máxima — desenha assim que carregar
+      const first = new Image();
+      first.fetchPriority = 'high';
+      first.decoding = 'async';
+      first.onload = () => { firstFrameReady = true; drawFrame(0, true); preloadRest(); };
+      first.src = frameUrl(1);
+      frames[0] = first;
+      // Reserva slots dos outros (vazios até preloadRest disparar)
+      for (let i = 1; i < FRAME_COUNT; i++) frames[i] = null;
+    }
+
+    function preloadRest(){
+      // Demais frames carregam em background, em batches pequenos pra não brigar com outros assets
+      let i = 2;
+      function loadBatch(){
+        const BATCH = 6; // 6 paralelos por vez
+        const batchEnd = Math.min(i + BATCH, FRAME_COUNT + 1);
+        let loaded = 0;
+        for (; i < batchEnd; i++) {
+          const img = new Image();
+          img.decoding = 'async';
+          img.fetchPriority = 'low';
+          const idx = i;
+          img.onload = img.onerror = () => { loaded++; if (loaded === BATCH || idx === FRAME_COUNT) loadBatch(); };
+          img.src = frameUrl(idx);
+          frames[idx - 1] = img;
         }
-        frames.push(img);
       }
+      loadBatch();
     }
 
     function start(){
