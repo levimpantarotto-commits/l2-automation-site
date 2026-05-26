@@ -17,6 +17,15 @@
           y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
       })(window, document, "clarity", "script", "wx8e6qbkzf");
   </script>
+
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-D6C6KV9KJX"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-D6C6KV9KJX');
+  </script>
   <style>
     :root{
       --black:#08080A; --black2:#0D0D10; --gold:#D4AF37;
@@ -308,7 +317,7 @@
       <li><a href="#agents">Agentes</a></li>
       <li><a href="#cta">Contato</a></li>
     </ul>
-    <a href="https://wa.me/5511996112620?text=Ol%C3%A1!%20Vim%20do%20site%20da%20L2%20Automations%20e%20quero%20iniciar%20um%20projeto." target="_blank" rel="noopener noreferrer" class="nav-cta">Iniciar Projeto</a>
+    <a href="https://wa.me/5511996112620?text=Ol%C3%A1!%20Vim%20do%20site%20da%20L2%20Automations%20e%20quero%20iniciar%20um%20projeto." target="_blank" rel="noopener noreferrer" class="nav-cta" data-wa-source="nav">Iniciar Projeto</a>
   </nav>
 
   <!-- ① HERO -->
@@ -331,7 +340,7 @@
         Sua operação<br/>trabalhando <em>enquanto</em><br/>você dorme.
       </h1>
       <p class="hero-sub">Agentes de IA que qualificam, conversam, fecham e reportam — sem pausa, sem erro, sem custo variável.</p>
-      <a href="https://wa.me/5511996112620?text=Ol%C3%A1!%20Vim%20do%20site%20da%20L2%20Automations%20e%20quero%20escalar%20minha%20opera%C3%A7%C3%A3o." target="_blank" rel="noopener noreferrer" class="hero-cta">Quero Escalar</a>
+      <a href="https://wa.me/5511996112620?text=Ol%C3%A1!%20Vim%20do%20site%20da%20L2%20Automations%20e%20quero%20escalar%20minha%20opera%C3%A7%C3%A3o." target="_blank" rel="noopener noreferrer" class="hero-cta" data-wa-source="hero">Quero Escalar</a>
     </div>
 
     <!-- BRAIN 3D WIREFRAME -->
@@ -798,7 +807,7 @@
     </svg>
     <h2 class="cta-h2 reveal">Escalabilidade<br/>é uma <em>escolha.</em></h2>
     <p class="cta-sub reveal">Agende uma sessão diagnóstica. Em 30 minutos você vê exatamente onde sua operação está perdendo dinheiro.</p>
-    <a href="https://wa.me/5511996112620?text=Ol%C3%A1!%20Vim%20do%20site%20da%20L2%20Automations%20e%20quero%20agendar%20um%20diagn%C3%B3stico." target="_blank" rel="noopener noreferrer" class="cta-btn reveal">Agendar Diagnóstico no WhatsApp</a>
+    <a href="https://wa.me/5511996112620?text=Ol%C3%A1!%20Vim%20do%20site%20da%20L2%20Automations%20e%20quero%20agendar%20um%20diagn%C3%B3stico." target="_blank" rel="noopener noreferrer" class="cta-btn reveal" data-wa-source="cta">Agendar Diagnóstico no WhatsApp</a>
   </section>
 
   <footer>
@@ -1721,6 +1730,27 @@
   /* ── Marquee ── */
   const mq = document.getElementById('mq'); let mqX = 0;
   (function(){ mqX -= .6; if (Math.abs(mqX) >= mq.scrollWidth / 2) mqX = 0; mq.style.transform = `translateX(${mqX}px)`; requestAnimationFrame(arguments.callee); })();
+
+  /* ── WhatsApp click tracking (GA4 + Clarity) — rastreia qual botão converte ── */
+  document.querySelectorAll('a[data-wa-source]').forEach(link => {
+    link.addEventListener('click', () => {
+      const source = link.dataset.waSource;
+      // Google Analytics 4 event
+      if (typeof gtag === 'function') {
+        gtag('event', 'whatsapp_click', {
+          source: source,                          // nav / hero / cta
+          event_category: 'engagement',
+          event_label: 'WhatsApp ' + source,
+          value: 1
+        });
+      }
+      // Microsoft Clarity custom tag
+      if (typeof clarity === 'function') {
+        clarity('set', 'whatsapp_click_source', source);
+        clarity('event', 'whatsapp_click_' + source);
+      }
+    });
+  });
 
   /* ── Nav hide ── */
   let lastY = 0;
