@@ -51,7 +51,7 @@
     .logo-text{font-family:'Inter Tight',sans-serif;font-weight:900;fill:#FFFFFF;}
 
     /* ══ ZOOM (sem pin) ══ */
-    #zoom-pin{position:relative;z-index:2;min-height:80vh;overflow:hidden;padding:120px 0;}
+    #zoom-pin{position:relative;z-index:2;min-height:auto;overflow:hidden;padding:90px 0;}
     .zoom-pin-bg{position:absolute;inset:0;background:var(--black2);}
     .zoom-pin-content{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 40px;will-change:transform,opacity;}
     .zoom-pin-tag{font-size:10px;font-weight:800;letter-spacing:.45em;text-transform:uppercase;color:var(--gold);margin-bottom:32px;}
@@ -177,8 +177,8 @@
     .stat-label{font-size:10px;font-weight:800;letter-spacing:.35em;text-transform:uppercase;color:var(--mute);}
 
     /* ══ CTA ══ */
-    #cta{position:relative;z-index:2;min-height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 60px 90px;overflow:hidden;}
-    .cta-glow{position:absolute;width:700px;height:700px;background:radial-gradient(circle,rgba(212,175,55,.08) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
+    #cta{position:relative;z-index:2;min-height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 60px 70px;overflow:hidden;}
+    .cta-glow{position:absolute;width:500px;height:500px;background:radial-gradient(circle,rgba(212,175,55,.06) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
     .cta-h2{font-size:clamp(44px,7vw,100px);font-weight:900;letter-spacing:-.04em;line-height:.95;max-width:14ch;}
     .cta-h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
     .cta-sub{margin-top:24px;font-size:17px;color:var(--mute);max-width:40ch;line-height:1.65;}
@@ -1030,23 +1030,458 @@
     else window.addEventListener('load', start);
   }
 
-  // Hero — Cérebro
+  /* ═══════════════════════════════════════════
+     BRAIN 3D — Wireframe esférico deformado em forma de cérebro
+     ~80 vértices, rotação contínua + scroll-driven, leve (~12% do antigo brain 3D)
+  ═══════════════════════════════════════════ */
+  function createBrain3D(canvas, opts){
+    const ctx = canvas.getContext('2d');
+    const o = Object.assign({
+      rows: 7,             // resolução vertical (latitude)
+      cols: 11,            // resolução horizontal (longitude)
+      rotSpeed: 0.0028,    // rotação contínua sutil
+      scrollTarget: null,
+      scrollMul: 1.0,      // quanto o scroll acelera a rotação
+      scale: 0.32,
+      drawDots: true,
+      colorBase: '212,175,55'
+    }, opts || {});
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W = 0, H = 0, vertices = null, edges = [];
+    let angle = 0, scrollProgress = 0;
+    let rafId = null, isVisible = true;
+
+    // Forma de cérebro: esfera deformada com sulci e fissura
+    function brainVertex(u, v){
+      const phi = u * Math.PI;
+      const theta = v * Math.PI * 2;
+      let x = Math.sin(phi) * Math.cos(theta);
+      let y = Math.cos(phi);
+      let z = Math.sin(phi) * Math.sin(theta);
+      x *= 1.30;          // mais largo horizontalmente
+      y *= 0.78;          // mais achatado verticalmente
+      const sulci = 0.08 * Math.sin(5 * phi + 1) * Math.cos(4 * theta) +
+                    0.05 * Math.sin(7 * theta + phi);
+      const r = 1 + sulci;
+      const fissure = Math.exp(-x * x * 6) * 0.12;
+      return [x * r, (y - 0.05) * r - fissure, z * r];
+    }
+
+    function precompute(){
+      vertices = [];
+      for (let i = 0; i <= o.rows; i++){
+        vertices[i] = [];
+        for (let j = 0; j <= o.cols; j++){
+          vertices[i][j] = brainVertex(i / o.rows, j / o.cols);
+        }
+      }
+      // Pré-calcular topologia de edges (horizontal + vertical)
+      edges = [];
+      for (let i = 0; i <= o.rows; i++){
+        for (let j = 0; j < o.cols; j++){
+          edges.push([i, j, i, j + 1]);
+        }
+      }
+      for (let j = 0; j <= o.cols; j++){
+        for (let i = 0; i < o.rows; i++){
+          edges.push([i, j, i + 1, j]);
+        }
+      }
+    }
+
+    function project(x, y, z, ang, cx, cy, scale){
+      const cosA = Math.cos(ang), sinA = Math.sin(ang);
+      const rx = x * cosA - z * sinA;
+      const rz = x * sinA + z * cosA;
+      const tilt = 0.18;
+      const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
+      const ry2 = y * cosT - rz * sinT;
+      const rz2 = y * sinT + rz * cosT;
+      const fov = 3.2;
+      const pz = rz2 + fov;
+      return {
+        x: (rx / pz) * scale * fov + cx,
+        y: (ry2 / pz) * scale * fov + cy,
+        z: rz2
+      };
+    }
+
+    function resize(){
+      const w = canvas.parentElement.offsetWidth || canvas.offsetWidth || 600;
+      const h = canvas.parentElement.offsetHeight || canvas.offsetHeight || 400;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      W = canvas.width; H = canvas.height;
+    }
+
+    function frame(){
+      if (!isVisible) { rafId = requestAnimationFrame(frame); return; }
+      ctx.clearRect(0, 0, W, H);
+
+      // Rotação = contínua + acelerada por scroll
+      angle += o.rotSpeed;
+      const totalAngle = angle + scrollProgress * Math.PI * 0.6 * o.scrollMul;
+
+      const cx = W / 2, cy = H / 2;
+      const scl = Math.min(W, H) * o.scale;
+
+      // Projetar todos os vértices
+      const proj = [];
+      for (let i = 0; i <= o.rows; i++){
+        proj[i] = [];
+        for (let j = 0; j <= o.cols; j++){
+          const v = vertices[i][j];
+          proj[i][j] = project(v[0], v[1], v[2], totalAngle, cx, cy, scl);
+        }
+      }
+
+      // Edges com depth pra sort back-to-front
+      const drawEdges = [];
+      for (let e = 0; e < edges.length; e++){
+        const [i1, j1, i2, j2] = edges[e];
+        const a = proj[i1][j1], b = proj[i2][j2];
+        drawEdges.push({ a, b, depth: (a.z + b.z) * 0.5 });
+      }
+      drawEdges.sort((p, q) => p.depth - q.depth);
+
+      // Opacidade global cresce com scroll progress (entrada suave)
+      const globalAlpha = 0.25 + scrollProgress * 0.75;
+
+      // Desenhar edges (back primeiro, front por cima)
+      for (let e = 0; e < drawEdges.length; e++){
+        const { a, b, depth } = drawEdges[e];
+        const t = Math.max(0, Math.min(1, (depth + 1.3) / 2.6));
+        const alpha = (0.08 + t * 0.45) * globalAlpha;
+        ctx.strokeStyle = `rgba(${o.colorBase},${alpha.toFixed(3)})`;
+        ctx.lineWidth = (0.35 + t * 0.6) * dpr;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      // Vértices (só os de frente — depth > -0.3)
+      if (o.drawDots){
+        for (let i = 0; i <= o.rows; i++){
+          for (let j = 0; j <= o.cols; j++){
+            const p = proj[i][j];
+            if (p.z > -0.3){
+              const t = Math.max(0, Math.min(1, (p.z + 1.3) / 2.6));
+              const alpha = (0.5 + t * 0.5) * globalAlpha;
+              // 12% das vértices recebem glow
+              if (((i * 31 + j * 17) % 9) < 1 && t > 0.55){
+                ctx.shadowColor = `rgba(${o.colorBase},${(0.5 * alpha).toFixed(3)})`;
+                ctx.shadowBlur = 6 * dpr;
+              } else {
+                ctx.shadowBlur = 0;
+              }
+              ctx.fillStyle = `rgba(${o.colorBase},${alpha.toFixed(3)})`;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, (1.2 + t * 1.4) * dpr, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+        ctx.shadowBlur = 0;
+      }
+
+      rafId = requestAnimationFrame(frame);
+    }
+
+    function start(){
+      precompute();
+      resize();
+      if (rafId) cancelAnimationFrame(rafId);
+      frame();
+
+      const trigger = o.scrollTarget || canvas.closest('section') || canvas.parentElement;
+      if (trigger){
+        ScrollTrigger.create({
+          trigger,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 0.8,
+          onUpdate: self => { scrollProgress = self.progress; }
+        });
+      }
+    }
+
+    window.addEventListener('resize', resize);
+    if ('IntersectionObserver' in window){
+      const io = new IntersectionObserver(([e]) => { isVisible = e.isIntersecting; }, { threshold: 0 });
+      io.observe(canvas);
+    }
+    if (document.readyState === 'complete') start();
+    else window.addEventListener('load', start);
+  }
+
+  /* ═══════════════════════════════════════════
+     PERSON 3D — Figura humana wireframe (cabeça esférica + torso caixa + membros)
+  ═══════════════════════════════════════════ */
+  function createPerson3D(canvas, opts){
+    const ctx = canvas.getContext('2d');
+    const o = Object.assign({
+      rotSpeed: 0.0030,
+      scrollMul: 1.0,
+      scale: 0.40,
+      colorBase: '212,175,55'
+    }, opts || {});
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let W = 0, H = 0, vertices = [], edges = [];
+    let angle = 0, scrollProgress = 0;
+    let rafId = null, isVisible = true;
+
+    function buildModel(){
+      vertices = []; edges = [];
+
+      // CABEÇA — esfera wireframe (5 rows x 8 cols = 40 vertices)
+      const HR = 4, HC = 8;
+      const HEAD_SIZE = 0.16;
+      const HEAD_Y = -0.68;
+      const headBase = vertices.length;
+      for (let i = 0; i <= HR; i++){
+        for (let j = 0; j <= HC; j++){
+          const phi = (i / HR) * Math.PI;
+          const theta = (j / HC) * Math.PI * 2;
+          vertices.push([
+            HEAD_SIZE * Math.sin(phi) * Math.cos(theta),
+            HEAD_Y + HEAD_SIZE * Math.cos(phi),
+            HEAD_SIZE * Math.sin(phi) * Math.sin(theta)
+          ]);
+        }
+      }
+      const headIdx = (i, j) => headBase + i * (HC + 1) + j;
+      for (let i = 0; i <= HR; i++){
+        for (let j = 0; j < HC; j++) edges.push([headIdx(i, j), headIdx(i, j + 1)]);
+      }
+      for (let j = 0; j <= HC; j++){
+        for (let i = 0; i < HR; i++) edges.push([headIdx(i, j), headIdx(i + 1, j)]);
+      }
+
+      // PESCOÇO (4 vértices)
+      const NECK_BASE = vertices.length;
+      vertices.push([-0.04, -0.50, 0.05]);
+      vertices.push([0.04, -0.50, 0.05]);
+      vertices.push([0.04, -0.50, -0.05]);
+      vertices.push([-0.04, -0.50, -0.05]);
+      vertices.push([-0.05, -0.42, 0.06]);
+      vertices.push([0.05, -0.42, 0.06]);
+      vertices.push([0.05, -0.42, -0.06]);
+      vertices.push([-0.05, -0.42, -0.06]);
+      // pescoço box edges
+      for (let k = 0; k < 4; k++){
+        edges.push([NECK_BASE + k, NECK_BASE + (k + 1) % 4]);
+        edges.push([NECK_BASE + 4 + k, NECK_BASE + 4 + (k + 1) % 4]);
+        edges.push([NECK_BASE + k, NECK_BASE + 4 + k]);
+      }
+
+      // TORSO — caixa trapezoidal (ombros mais largos, quadril mais estreito)
+      const TS = vertices.length;
+      const SW = 0.34, SD = 0.16; // shoulder width / depth
+      const HW = 0.22, HD = 0.14; // hip width / depth
+      // Ombros (y = -0.36)
+      vertices.push([-SW, -0.36, SD]);
+      vertices.push([SW, -0.36, SD]);
+      vertices.push([SW, -0.36, -SD]);
+      vertices.push([-SW, -0.36, -SD]);
+      // Meio (y = -0.10)
+      vertices.push([-SW * 0.9, -0.10, SD * 0.95]);
+      vertices.push([SW * 0.9, -0.10, SD * 0.95]);
+      vertices.push([SW * 0.9, -0.10, -SD * 0.95]);
+      vertices.push([-SW * 0.9, -0.10, -SD * 0.95]);
+      // Quadril (y = 0.18)
+      vertices.push([-HW, 0.18, HD]);
+      vertices.push([HW, 0.18, HD]);
+      vertices.push([HW, 0.18, -HD]);
+      vertices.push([-HW, 0.18, -HD]);
+      // Edges das 3 camadas
+      for (let layer = 0; layer < 3; layer++){
+        const o0 = TS + layer * 4;
+        edges.push([o0, o0 + 1]); edges.push([o0 + 1, o0 + 2]);
+        edges.push([o0 + 2, o0 + 3]); edges.push([o0 + 3, o0]);
+      }
+      // Verticais entre camadas
+      for (let k = 0; k < 4; k++){
+        edges.push([TS + k, TS + 4 + k]);
+        edges.push([TS + 4 + k, TS + 8 + k]);
+      }
+      // Diagonais sutis pra forma humana
+      edges.push([TS + 0, TS + 5]); edges.push([TS + 1, TS + 6]); edges.push([TS + 2, TS + 7]); edges.push([TS + 3, TS + 4]);
+
+      // BRAÇO ESQUERDO — 4 vértices (ombro, cotovelo, antebraço, mão)
+      const AL = vertices.length;
+      vertices.push([-SW, -0.34, 0.02]);
+      vertices.push([-SW - 0.12, -0.18, 0.05]);
+      vertices.push([-SW - 0.08, 0.04, 0.08]);
+      vertices.push([-SW - 0.04, 0.22, 0.04]);
+      edges.push([AL, AL + 1]); edges.push([AL + 1, AL + 2]); edges.push([AL + 2, AL + 3]);
+      // Mão (pequeno detalhe)
+      edges.push([AL + 3, AL + 3]); // (placeholder safe)
+
+      // BRAÇO DIREITO (mirror)
+      const AR = vertices.length;
+      vertices.push([SW, -0.34, 0.02]);
+      vertices.push([SW + 0.12, -0.18, 0.05]);
+      vertices.push([SW + 0.08, 0.04, 0.08]);
+      vertices.push([SW + 0.04, 0.22, 0.04]);
+      edges.push([AR, AR + 1]); edges.push([AR + 1, AR + 2]); edges.push([AR + 2, AR + 3]);
+
+      // PERNA ESQUERDA — 4 vértices
+      const LL = vertices.length;
+      vertices.push([-HW * 0.6, 0.20, 0.02]);
+      vertices.push([-HW * 0.65, 0.42, 0.05]);
+      vertices.push([-HW * 0.68, 0.66, 0.02]);
+      vertices.push([-HW * 0.72, 0.92, 0.06]);
+      edges.push([LL, LL + 1]); edges.push([LL + 1, LL + 2]); edges.push([LL + 2, LL + 3]);
+
+      // PERNA DIREITA
+      const LR = vertices.length;
+      vertices.push([HW * 0.6, 0.20, 0.02]);
+      vertices.push([HW * 0.65, 0.42, 0.05]);
+      vertices.push([HW * 0.68, 0.66, 0.02]);
+      vertices.push([HW * 0.72, 0.92, 0.06]);
+      edges.push([LR, LR + 1]); edges.push([LR + 1, LR + 2]); edges.push([LR + 2, LR + 3]);
+
+      // CONECTIVAS: cabeça↔pescoço↔torso
+      edges.push([headIdx(HR, 0), NECK_BASE]);
+      edges.push([headIdx(HR, HC / 2), NECK_BASE + 2]);
+      edges.push([NECK_BASE + 4, TS + 0]); edges.push([NECK_BASE + 5, TS + 1]);
+      edges.push([NECK_BASE + 6, TS + 2]); edges.push([NECK_BASE + 7, TS + 3]);
+    }
+
+    function project(x, y, z, ang, cx, cy, scale){
+      const cosA = Math.cos(ang), sinA = Math.sin(ang);
+      const rx = x * cosA - z * sinA;
+      const rz = x * sinA + z * cosA;
+      const tilt = 0.08;
+      const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
+      const ry2 = y * cosT - rz * sinT;
+      const rz2 = y * sinT + rz * cosT;
+      const fov = 3.5;
+      const pz = rz2 + fov;
+      return {
+        x: (rx / pz) * scale * fov + cx,
+        y: (ry2 / pz) * scale * fov + cy,
+        z: rz2
+      };
+    }
+
+    function resize(){
+      const w = canvas.parentElement.offsetWidth || canvas.offsetWidth || 320;
+      const h = canvas.parentElement.offsetHeight || canvas.offsetHeight || 380;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      W = canvas.width; H = canvas.height;
+    }
+
+    function frame(){
+      if (!isVisible) { rafId = requestAnimationFrame(frame); return; }
+      ctx.clearRect(0, 0, W, H);
+
+      angle += o.rotSpeed;
+      const totalAngle = angle + scrollProgress * Math.PI * 0.5 * o.scrollMul;
+
+      const cx = W / 2, cy = H / 2;
+      const scl = Math.min(W, H) * o.scale;
+
+      // Projetar
+      const proj = new Array(vertices.length);
+      for (let i = 0; i < vertices.length; i++){
+        const v = vertices[i];
+        proj[i] = project(v[0], v[1], v[2], totalAngle, cx, cy, scl);
+      }
+
+      // Edges com depth
+      const drawEdges = [];
+      for (let e = 0; e < edges.length; e++){
+        const [i1, i2] = edges[e];
+        const a = proj[i1], b = proj[i2];
+        drawEdges.push({ a, b, depth: (a.z + b.z) * 0.5 });
+      }
+      drawEdges.sort((p, q) => p.depth - q.depth);
+
+      const globalAlpha = 0.25 + scrollProgress * 0.75;
+
+      // Edges
+      for (let e = 0; e < drawEdges.length; e++){
+        const { a, b, depth } = drawEdges[e];
+        const t = Math.max(0, Math.min(1, (depth + 1.3) / 2.6));
+        const alpha = (0.1 + t * 0.55) * globalAlpha;
+        ctx.strokeStyle = `rgba(${o.colorBase},${alpha.toFixed(3)})`;
+        ctx.lineWidth = (0.4 + t * 0.6) * dpr;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+
+      // Vértices (todos visíveis com alpha por depth)
+      for (let i = 0; i < proj.length; i++){
+        const p = proj[i];
+        if (p.z > -0.5){
+          const t = Math.max(0, Math.min(1, (p.z + 1.3) / 2.6));
+          const alpha = (0.55 + t * 0.45) * globalAlpha;
+          if ((i % 7) === 0 && t > 0.55){
+            ctx.shadowColor = `rgba(${o.colorBase},${(0.5 * alpha).toFixed(3)})`;
+            ctx.shadowBlur = 6 * dpr;
+          } else {
+            ctx.shadowBlur = 0;
+          }
+          ctx.fillStyle = `rgba(${o.colorBase},${alpha.toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, (1.0 + t * 1.2) * dpr, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.shadowBlur = 0;
+
+      rafId = requestAnimationFrame(frame);
+    }
+
+    function start(){
+      buildModel();
+      resize();
+      if (rafId) cancelAnimationFrame(rafId);
+      frame();
+
+      const trigger = o.scrollTarget || canvas.closest('section') || canvas.parentElement;
+      if (trigger){
+        ScrollTrigger.create({
+          trigger,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 0.8,
+          onUpdate: self => { scrollProgress = self.progress; }
+        });
+      }
+    }
+
+    window.addEventListener('resize', resize);
+    if ('IntersectionObserver' in window){
+      const io = new IntersectionObserver(([e]) => { isVisible = e.isIntersecting; }, { threshold: 0 });
+      io.observe(canvas);
+    }
+    if (document.readyState === 'complete') start();
+    else window.addEventListener('load', start);
+  }
+
+  // Hero — Cérebro 3D wireframe
   const heroCanvas = document.getElementById('brain-canvas');
-  if (heroCanvas) createShapedNetwork(heroCanvas, {
-    count: 55, shape: brainShape, scale: 0.40, maxDist: 0.14, glowChance: 0.22, pointSize: 1.4
-  });
+  if (heroCanvas) createBrain3D(heroCanvas, { rows: 8, cols: 12, scale: 0.32, rotSpeed: 0.0026, scrollMul: 1.0 });
 
-  // Manifesto — Cérebro menor
+  // Manifesto — Cérebro 3D menor
   const neuralCanvas = document.getElementById('neural-canvas');
-  if (neuralCanvas) createShapedNetwork(neuralCanvas, {
-    count: 36, shape: brainShape, scale: 0.42, maxDist: 0.22, glowChance: 0.28, pointSize: 1.5
-  });
+  if (neuralCanvas) createBrain3D(neuralCanvas, { rows: 7, cols: 10, scale: 0.36, rotSpeed: 0.0034, scrollMul: 0.8 });
 
-  // Agents — Pessoa (infraestrutura)
+  // Agents — Pessoa 3D wireframe
   const agentsPersonCanvas = document.getElementById('agents-person');
-  if (agentsPersonCanvas) createShapedNetwork(agentsPersonCanvas, {
-    count: PERSON_POINTS.length, shape: personShape, scale: 0.42, maxDist: 0.20, glowChance: 0.22, pointSize: 1.5, driftAmp: 4
-  });
+  if (agentsPersonCanvas) createPerson3D(agentsPersonCanvas, { scale: 0.42, rotSpeed: 0.0028, scrollMul: 0.9 });
 
   /* Backgrounds das seções: opacidade fixa via CSS + Ken Burns sutil contínuo via keyframes.
      Sem fade-in scroll-driven, sem parallax exagerado — discreto e profissional. */
