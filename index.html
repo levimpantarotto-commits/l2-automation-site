@@ -50,10 +50,10 @@
     @keyframes logo-pulse{0%,100%{opacity:1;filter:drop-shadow(0 0 0 rgba(212,175,55,0));}50%{opacity:.55;filter:drop-shadow(0 0 6px rgba(212,175,55,.7));}}
     .logo-text{font-family:'Inter Tight',sans-serif;font-weight:900;fill:#FFFFFF;}
 
-    /* ══ ZOOM PIN ══ */
-    #zoom-pin{position:relative;z-index:2;height:100vh;overflow:hidden;}
+    /* ══ ZOOM (sem pin) ══ */
+    #zoom-pin{position:relative;z-index:2;min-height:80vh;overflow:hidden;padding:120px 0;}
     .zoom-pin-bg{position:absolute;inset:0;background:var(--black2);}
-    .zoom-pin-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;will-change:transform,opacity,filter;}
+    .zoom-pin-content{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 40px;will-change:transform,opacity;}
     .zoom-pin-tag{font-size:10px;font-weight:800;letter-spacing:.45em;text-transform:uppercase;color:var(--gold);margin-bottom:32px;}
     .zoom-pin-h2{font-size:clamp(60px,10vw,138px);font-weight:900;line-height:.92;letter-spacing:-.04em;}
     .zoom-pin-h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
@@ -65,11 +65,11 @@
     .marquee-item .dot{color:var(--gold);font-size:18px;}
 
     /* ══ CLIP REVEAL ══ */
-    #clip-reveal{position:relative;z-index:2;height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
-    .clip-inner{position:absolute;inset:0;background:linear-gradient(135deg,#0f0f12 0%,#18140a 100%);display:flex;gap:80px;align-items:center;justify-content:center;padding:80px;clip-path:circle(6% at 50% 50%);will-change:clip-path;}
+    #clip-reveal{position:relative;z-index:2;min-height:80vh;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:80px 0;}
+    .clip-inner{position:relative;background:linear-gradient(135deg,#0f0f12 0%,#18140a 100%);display:flex;gap:80px;align-items:center;justify-content:center;padding:80px;clip-path:circle(35% at 50% 50%);will-change:clip-path,opacity;width:100%;max-width:1400px;min-height:60vh;}
     .clip-text{flex:1;max-width:560px;}
     .brain-small-wrap{flex-shrink:0;width:320px;height:320px;position:relative;}
-    #brain-small{width:100%;height:100%;}
+    #manifesto-video{width:100%;height:100%;display:block;}
     .clip-h2{font-size:clamp(30px,4vw,54px);font-weight:900;letter-spacing:-.03em;line-height:1.05;margin-bottom:40px;}
     .clip-h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
     .clip-aside{display:flex;flex-direction:column;gap:22px;}
@@ -185,6 +185,17 @@
     .footer-copy{font-size:11px;color:rgba(245,245,240,.22);letter-spacing:.1em;}
 
     .reveal{opacity:0;}
+
+    /* Acessibilidade — quem desabilita animação no SO recebe versão estática */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+      .reveal { opacity: 1 !important; }
+      .fstep-inner { opacity: 1 !important; transform: none !important; }
+      .chat-msg { opacity: 1 !important; transform: none !important; }
+      #chat-status-bar { opacity: 1 !important; }
+      .logo-dot { animation: none !important; }
+      .clip-inner { clip-path: none !important; opacity: 1 !important; }
+    }
 
     @media(max-width:1000px){
       nav{padding:22px 24px;}
@@ -324,7 +335,7 @@
         </div>
       </div>
       <div class="brain-small-wrap">
-        <canvas id="brain-small"></canvas>
+        <canvas id="manifesto-video"></canvas>
       </div>
     </div>
   </section>
@@ -629,154 +640,11 @@
   <script>
   gsap.registerPlugin(ScrollTrigger);
 
-  /* ── Lenis ── */
-  const lenis=new Lenis({duration:1.6,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t))});
+  /* ── Lenis (duration reduzida 1.6→1.0 pra responsividade) ── */
+  const lenis=new Lenis({duration:1.0,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t))});
   lenis.on('scroll',ScrollTrigger.update);
   gsap.ticker.add(t=>lenis.raf(t*1000));
   gsap.ticker.lagSmoothing(0);
-
-  /* ═══════════════════════════════════════════
-     BRAIN — Wireframe 3D Quadriculado (Canvas)
-  ═══════════════════════════════════════════ */
-  function createBrain(canvas, size, rotSpeed) {
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width  || size;
-    const H = canvas.height || size;
-    canvas.width = W; canvas.height = H;
-
-    let angle = 0;
-    const ROWS = 22, COLS = 28;
-
-    // Generate brain surface vertices (parametric)
-    // Two asymmetric hemispheres + convolutions
-    function brainPoint(u, v) {
-      const phi = u * Math.PI;         // 0..PI
-      const theta = v * Math.PI * 2;   // 0..2PI
-
-      // Base sphere
-      let x = Math.sin(phi) * Math.cos(theta);
-      let y = Math.cos(phi);
-      let z = Math.sin(phi) * Math.sin(theta);
-
-      // Split into two lobes (left/right)
-      const lx = x > 0 ? 1 : -1;
-      x *= 1.35;   // wider
-      y *= 0.85;   // flatter vertically
-
-      // Sulci/gyri — ridges
-      const gyri =
-        0.09 * Math.sin(5 * phi + 1) * Math.cos(4 * theta) +
-        0.06 * Math.sin(9 * phi) * Math.sin(7 * theta + 0.5) +
-        0.04 * Math.cos(3 * phi) * Math.cos(11 * theta);
-
-      // Indent between lobes (medial fissure)
-      const fissure = Math.exp(-x * x * 8) * 0.18;
-
-      const r = 1 + gyri - fissure;
-      return [x * r, (y - 0.08) * r, z * r];
-    }
-
-    // Pre-compute grid vertices
-    const verts = [];
-    for (let i = 0; i <= ROWS; i++) {
-      verts[i] = [];
-      for (let j = 0; j <= COLS; j++) {
-        verts[i][j] = brainPoint(i / ROWS, j / COLS);
-      }
-    }
-
-    function project(x, y, z, rotY, cx, cy, scale) {
-      // Rotate Y
-      const cosA = Math.cos(rotY), sinA = Math.sin(rotY);
-      const rx = x * cosA - z * sinA;
-      const rz = x * sinA + z * cosA;
-      // Tilt slightly
-      const tilt = 0.18;
-      const cosT = Math.cos(tilt), sinT = Math.sin(tilt);
-      const ry2 = y * cosT - rz * sinT;
-      const rz2 = y * sinT + rz * cosT;
-      // Perspective
-      const fov = 3.5;
-      const pz = rz2 + fov;
-      const px = (rx / pz) * scale * fov + cx;
-      const py = (ry2 / pz) * scale * fov + cy;
-      return { px, py, depth: rz2 };
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      const cx = W / 2, cy = H / 2 + H * 0.04;
-      const scale = Math.min(W, H) * 0.28;
-
-      // Collect all edges with depth for sorting
-      const edges = [];
-
-      // Horizontal rings (latitude lines — the "quadriculado")
-      for (let i = 0; i <= ROWS; i++) {
-        for (let j = 0; j < COLS; j++) {
-          const a = verts[i][j], b = verts[i][j + 1];
-          const pa = project(...a, angle, cx, cy, scale);
-          const pb = project(...b, angle, cx, cy, scale);
-          edges.push({ pa, pb, depth: (pa.depth + pb.depth) / 2 });
-        }
-      }
-      // Vertical rings (longitude lines)
-      for (let j = 0; j <= COLS; j++) {
-        for (let i = 0; i < ROWS; i++) {
-          const a = verts[i][j % COLS === COLS ? 0 : j];
-          const b = verts[i + 1][j % COLS === COLS ? 0 : j];
-          const pa = project(...a, angle, cx, cy, scale);
-          const pb = project(...b, angle, cx, cy, scale);
-          edges.push({ pa, pb, depth: (pa.depth + pb.depth) / 2 });
-        }
-      }
-
-      // Sort back to front
-      edges.sort((a, b) => a.depth - b.depth);
-
-      // Draw edges
-      edges.forEach(({ pa, pb, depth }) => {
-        // depth maps to opacity and glow
-        const t = Math.max(0, Math.min(1, (depth + 1.5) / 3));
-        const alpha = 0.08 + t * 0.52;
-        const lineW = 0.4 + t * 0.7;
-
-        ctx.beginPath();
-        ctx.moveTo(pa.px, pa.py);
-        ctx.lineTo(pb.px, pb.py);
-        ctx.strokeStyle = `rgba(212,175,55,${alpha})`;
-        ctx.lineWidth = lineW;
-        ctx.shadowColor = 'rgba(212,175,55,0.35)';
-        ctx.shadowBlur = t > 0.6 ? 4 : 0;
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      });
-
-      // Draw vertex dots at grid intersections (front faces only)
-      for (let i = 0; i <= ROWS; i++) {
-        for (let j = 0; j <= COLS; j++) {
-          const p = project(...verts[i][j], angle, cx, cy, scale);
-          if (p.depth > -0.2) {
-            const t = Math.max(0, Math.min(1, (p.depth + 1.5) / 3));
-            if (t > 0.55 && Math.random() < 0.008) {
-              // Occasional brighter node
-              ctx.beginPath();
-              ctx.arc(p.px, p.py, 2.2, 0, Math.PI * 2);
-              ctx.fillStyle = `rgba(212,175,55,${0.6 + t * 0.4})`;
-              ctx.shadowColor = '#D4AF37';
-              ctx.shadowBlur = 8;
-              ctx.fill();
-              ctx.shadowBlur = 0;
-            }
-          }
-        }
-      }
-
-      angle += rotSpeed;
-      requestAnimationFrame(draw);
-    }
-    draw();
-  }
 
   /* ═══════════════════════════════════════════
      CORTEX — Vídeo scroll-driven no Hero (121 frames WebP)
@@ -852,15 +720,7 @@
     else window.addEventListener('load', start);
   })();
 
-  // Manifesto brain (small)
-  const smallCanvas = document.getElementById('brain-small');
-  function initSmallBrain() {
-    smallCanvas.width  = smallCanvas.parentElement.offsetWidth  || 320;
-    smallCanvas.height = smallCanvas.parentElement.offsetHeight || 320;
-    createBrain(smallCanvas, 320, 0.006);
-  }
-  if (document.readyState === 'complete') initSmallBrain();
-  else window.addEventListener('load', initSmallBrain);
+  /* Brain 3D paramétrico removido (performance) — espaço aguarda novo vídeo scroll-driven */
 
   /* ── Logo draw animation (hero + nav, in parallel) ── */
   const heroPath    = document.getElementById('hero-logo-path');
@@ -890,17 +750,17 @@
   /* ── Hero zoom-out on scroll ── */
   gsap.to('#hero-inner', { scale: .82, opacity: 0, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 1.2 } });
 
-  /* ── Zoom PIN ── */
+  /* ── Zoom — fade-in simples (sem pin, sem scrub) ── */
   gsap.fromTo('#zoom-content',
-    { scale: .28, opacity: 0, filter: 'blur(14px)' },
-    { scale: 1, opacity: 1, filter: 'blur(0px)', ease: 'none',
-      scrollTrigger: { trigger: '#zoom-pin', start: 'top top', end: '+=700', pin: true, scrub: 1 } });
+    { scale: .82, opacity: 0, y: 40 },
+    { scale: 1, opacity: 1, y: 0, duration: 1.1, ease: 'power3.out',
+      scrollTrigger: { trigger: '#zoom-pin', start: 'top 70%' } });
 
-  /* ── Clip iris ── */
+  /* ── Clip Reveal — abre via clip-path com fade (sem pin, sem scrub) ── */
   gsap.fromTo('#clip-inner',
-    { clipPath: 'circle(5% at 50% 50%)' },
-    { clipPath: 'circle(85% at 50% 50%)', ease: 'none',
-      scrollTrigger: { trigger: '#clip-reveal', start: 'top top', end: '+=900', pin: true, scrub: 1 } });
+    { clipPath: 'circle(35% at 50% 50%)', opacity: 0.4 },
+    { clipPath: 'circle(85% at 50% 50%)', opacity: 1, duration: 1.4, ease: 'power3.out',
+      scrollTrigger: { trigger: '#clip-reveal', start: 'top 70%' } });
 
   /* ── OSIA letters reveal ── */
   gsap.fromTo('#osia-letters span',
@@ -943,7 +803,7 @@
     ScrollTrigger.create({
       trigger: '#funnel-pin-wrap',
       start: 'top top',
-      end: '+=2600',
+      end: '+=1200',
       pin: '#funnel-pin',
       anticipatePin: 1,
       onUpdate(self) {
