@@ -125,8 +125,11 @@
     .chat-send-btn{width:36px;height:36px;border:1px solid rgba(212,175,55,.22);border-radius:2px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
     /* ══ AGENTS ══ */
-    #agents{position:relative;z-index:2;padding:160px 60px;background:var(--black2);}
-    .agents-header{max-width:1200px;margin:0 auto 80px;}
+    #agents{position:relative;z-index:2;padding:140px 60px 160px;background:var(--black2);}
+    .agents-header{max-width:1200px;margin:0 auto 80px;display:flex;align-items:center;justify-content:space-between;gap:60px;}
+    .agents-header-text{flex:1;}
+    .agents-person-wrap{flex:0 0 320px;height:380px;position:relative;}
+    #agents-person{width:100%;height:100%;display:block;}
     .agents-h2{font-size:clamp(36px,4.5vw,64px);font-weight:900;letter-spacing:-.03em;max-width:20ch;}
     .agents-grid{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:var(--line);}
     .agent-card{background:var(--black2);padding:64px 56px;position:relative;overflow:hidden;display:grid;grid-template-columns:1fr auto;gap:40px;align-items:start;}
@@ -163,7 +166,7 @@
     .osia-stmt{font-size:clamp(20px,2.4vw,32px);font-weight:900;letter-spacing:-.02em;line-height:1.35;color:var(--white);}
     .osia-stmt em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
     /* ══ STATS ══ */
-    #stats{position:relative;z-index:2;padding:90px 60px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);}
+    #stats{position:relative;z-index:2;padding:70px 60px 60px;border-top:1px solid var(--line);}
     .stats-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:40px;}
     .stat-block{text-align:center;position:relative;}
     .stat-ring-wrap{position:relative;width:170px;height:170px;margin:0 auto 14px;}
@@ -174,7 +177,7 @@
     .stat-label{font-size:10px;font-weight:800;letter-spacing:.35em;text-transform:uppercase;color:var(--mute);}
 
     /* ══ CTA ══ */
-    #cta{position:relative;z-index:2;min-height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:70px 60px 90px;overflow:hidden;}
+    #cta{position:relative;z-index:2;min-height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 60px 90px;overflow:hidden;}
     .cta-glow{position:absolute;width:700px;height:700px;background:radial-gradient(circle,rgba(212,175,55,.08) 0%,transparent 70%);border-radius:50%;pointer-events:none;}
     .cta-h2{font-size:clamp(44px,7vw,100px);font-weight:900;letter-spacing:-.04em;line-height:.95;max-width:14ch;}
     .cta-h2 em{font-family:var(--serif);font-style:italic;font-weight:400;color:var(--gold);}
@@ -249,6 +252,8 @@
       .hero-right{flex:0 0 300px;width:100%;}
       .agents-grid,.stats-inner{grid-template-columns:1fr;}
       #agents,#stats,#cta{padding:100px 24px;}
+      .agents-header{flex-direction:column;gap:40px;}
+      .agents-person-wrap{flex:0 0 auto;width:240px;height:280px;align-self:center;}
       #flow{padding:80px 24px 0;}
       .flow-header{flex-direction:column;gap:28px;align-items:flex-start;}
       #funnel-pin{grid-template-columns:1fr;height:auto;}
@@ -671,8 +676,13 @@
   <!-- ⑥ AGENTES -->
   <section id="agents">
     <div class="agents-header">
-      <p class="sec-label reveal">Os Agentes</p>
-      <h2 class="agents-h2 reveal">A equipe que nunca para de trabalhar.</h2>
+      <div class="agents-header-text">
+        <p class="sec-label reveal">Os Agentes</p>
+        <h2 class="agents-h2 reveal">A equipe que nunca para de trabalhar.</h2>
+      </div>
+      <div class="agents-person-wrap">
+        <canvas id="agents-person"></canvas>
+      </div>
     </div>
     <div class="agents-grid">
       <div class="agent-card">
@@ -807,20 +817,75 @@
   gsap.ticker.lagSmoothing(0);
 
   /* ═══════════════════════════════════════════
-     PARTICLE NETWORK — partículas se movendo + conectando dinamicamente
-     Estilo Stripe/Linear. Leve (~35 partículas), zero dependência de assets externos.
+     SHAPED PARTICLE NETWORK — partículas em forma de cérebro / pessoa / etc.
+     Canvas leve. Partículas têm posição "base" (definida pela shape) + drift sutil local.
   ═══════════════════════════════════════════ */
-  function createParticleNetwork(canvas, opts){
+
+  // SHAPE FUNCTIONS — retornam {x,y} em coords -1..1, centro 0,0
+  // (depois é escalado pro tamanho do canvas)
+
+  // Cérebro: 2 lóbulos com fissura, gyri ondulados, mais denso no contorno
+  function brainShape(i, total){
+    const theta = (i / total) * Math.PI * 2 + (Math.random() - 0.5) * 0.25;
+    // Silhueta do cérebro (mais larga horizontal, fissuras no topo e base)
+    const baseR = 1.0 - 0.20 * Math.abs(Math.sin(2 * theta)) + 0.06 * Math.sin(6 * theta + 0.3);
+    // Densidade: 65% no contorno (depth alta), 35% interior
+    const onBorder = (i % 3) !== 0;
+    const depth = onBorder ? (0.82 + Math.random() * 0.18) : (0.25 + Math.random() * 0.55);
+    const r = baseR * depth;
+    return {
+      x: r * Math.cos(theta) * 1.15,  // mais largo na horizontal
+      y: r * Math.sin(theta) * 0.78   // mais achatado na vertical
+    };
+  }
+
+  // Pessoa: cabeça + ombros + torso + braços + pernas. Coordenadas manuais.
+  const PERSON_POINTS = [
+    // Cabeça (10 pontos circulando)
+    [0.00,-0.88],[0.08,-0.86],[0.13,-0.81],[0.15,-0.74],[0.12,-0.66],
+    [-0.12,-0.66],[-0.15,-0.74],[-0.13,-0.81],[-0.08,-0.86],[0.00,-0.62],
+    // Pescoço
+    [-0.05,-0.58],[0.05,-0.58],
+    // Ombros + clavícula
+    [-0.42,-0.48],[-0.28,-0.46],[-0.14,-0.46],[0.00,-0.45],[0.14,-0.46],[0.28,-0.46],[0.42,-0.48],
+    // Braço esquerdo
+    [-0.50,-0.32],[-0.55,-0.14],[-0.55, 0.04],[-0.52, 0.20],
+    // Braço direito
+    [ 0.50,-0.32],[ 0.55,-0.14],[ 0.55, 0.04],[ 0.52, 0.20],
+    // Torso central
+    [-0.14,-0.30],[0.14,-0.30],[-0.10,-0.12],[0.10,-0.12],[0.00,-0.05],
+    [-0.14, 0.08],[0.14, 0.08],
+    // Quadril
+    [-0.20, 0.22],[-0.05, 0.24],[ 0.05, 0.24],[ 0.20, 0.22],
+    // Perna esquerda
+    [-0.18, 0.40],[-0.20, 0.58],[-0.20, 0.76],[-0.22, 0.92],
+    // Perna direita
+    [ 0.18, 0.40],[ 0.20, 0.58],[ 0.20, 0.76],[ 0.22, 0.92],
+  ];
+  function personShape(i, total){
+    const p = PERSON_POINTS[i % PERSON_POINTS.length];
+    // Pequena variação aleatória pra evitar perfeição robótica
+    return { x: p[0] + (Math.random() - 0.5) * 0.025, y: p[1] + (Math.random() - 0.5) * 0.025 };
+  }
+
+  // Genérico randômico (fallback)
+  function randomShape(){
+    return { x: (Math.random() - 0.5) * 1.8, y: (Math.random() - 0.5) * 1.8 };
+  }
+
+  function createShapedNetwork(canvas, opts){
     const ctx = canvas.getContext('2d');
     const o = Object.assign({
-      count: 35,            // número de partículas
-      maxDist: 0.18,        // distância máx pra conectar (proporção da menor dimensão)
-      speed: 0.18,          // velocidade base
-      colorBase: '212,175,55',  // dourado
+      count: 50,
+      shape: randomShape,
+      maxDist: 0.16,
+      colorBase: '212,175,55',
       lineOpacity: 0.32,
       pointSize: 1.3,
-      glowChance: 0.18,     // % das partículas com glow extra
-      pauseWhenOffscreen: true
+      glowChance: 0.18,
+      driftAmp: 6,         // amplitude do drift local
+      driftSpeed: 0.008,   // velocidade do drift
+      scale: 0.40          // proporção do canvas ocupada pela forma (0..0.5)
     }, opts || {});
 
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -839,19 +904,26 @@
       W = canvas.width;
       H = canvas.height;
       maxDistPx = Math.min(W, H) * o.maxDist;
+      spawn(); // re-spawn pra recalcular posições base
     }
 
     function spawn(){
       particles = [];
+      const cx = W / 2, cy = H / 2;
+      const radius = Math.min(W, H) * o.scale;
       for (let i = 0; i < o.count; i++){
+        const pt = o.shape(i, o.count);
+        const baseX = cx + pt.x * radius;
+        const baseY = cy + pt.y * radius;
         particles.push({
-          x: Math.random() * W,
-          y: Math.random() * H,
-          vx: (Math.random() - 0.5) * o.speed * dpr * 2,
-          vy: (Math.random() - 0.5) * o.speed * dpr * 2,
+          baseX, baseY, x: baseX, y: baseY,
+          phaseX: Math.random() * Math.PI * 2,
+          phaseY: Math.random() * Math.PI * 2,
+          driftSpd: o.driftSpeed * (0.6 + Math.random() * 0.8),
+          driftAmp: o.driftAmp * (0.5 + Math.random() * 0.8) * dpr,
           r: (Math.random() * o.pointSize + 0.6) * dpr,
           glow: Math.random() < o.glowChance,
-          phase: Math.random() * Math.PI * 2
+          pulsePhase: Math.random() * Math.PI * 2
         });
       }
     }
@@ -860,26 +932,24 @@
       if (!isVisible) { rafId = requestAnimationFrame(frame); return; }
       ctx.clearRect(0, 0, W, H);
 
-      // Move + bounce
+      // Drift local (cada partícula orbita levemente sua posição base)
       for (let i = 0; i < particles.length; i++){
         const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) { p.x = 0; p.vx *= -1; }
-        else if (p.x > W) { p.x = W; p.vx *= -1; }
-        if (p.y < 0) { p.y = 0; p.vy *= -1; }
-        else if (p.y > H) { p.y = H; p.vy *= -1; }
-        p.phase += 0.018;
+        p.phaseX += p.driftSpd;
+        p.phaseY += p.driftSpd * 0.85;
+        p.pulsePhase += 0.025;
+        p.x = p.baseX + Math.sin(p.phaseX) * p.driftAmp;
+        p.y = p.baseY + Math.cos(p.phaseY) * p.driftAmp;
       }
 
-      // Linhas conectoras (par a par)
+      // Conexões
       ctx.lineWidth = 0.6 * dpr;
       for (let i = 0; i < particles.length; i++){
         const a = particles[i];
         for (let j = i + 1; j < particles.length; j++){
           const b = particles[j];
           const dx = a.x - b.x, dy = a.y - b.y;
-          const d = Math.sqrt(dx*dx + dy*dy);
+          const d = Math.sqrt(dx * dx + dy * dy);
           if (d < maxDistPx){
             const alpha = (1 - d / maxDistPx) * o.lineOpacity;
             ctx.strokeStyle = `rgba(${o.colorBase},${alpha.toFixed(3)})`;
@@ -891,17 +961,17 @@
         }
       }
 
-      // Partículas
+      // Pontos
       for (let i = 0; i < particles.length; i++){
         const p = particles[i];
         if (p.glow){
-          const breathe = 0.7 + Math.sin(p.phase) * 0.3;
-          ctx.shadowColor = `rgba(${o.colorBase},${(0.5 * breathe).toFixed(3)})`;
-          ctx.shadowBlur = 8 * dpr;
+          const breathe = 0.7 + Math.sin(p.pulsePhase) * 0.3;
+          ctx.shadowColor = `rgba(${o.colorBase},${(0.45 * breathe).toFixed(3)})`;
+          ctx.shadowBlur = 7 * dpr;
           ctx.fillStyle = `rgba(${o.colorBase},${(0.85 * breathe + 0.15).toFixed(3)})`;
         } else {
           ctx.shadowBlur = 0;
-          ctx.fillStyle = `rgba(${o.colorBase},0.7)`;
+          ctx.fillStyle = `rgba(${o.colorBase},0.72)`;
         }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
@@ -914,13 +984,12 @@
 
     function start(){
       resize();
-      spawn();
       if (rafId) cancelAnimationFrame(rafId);
       frame();
     }
 
-    window.addEventListener('resize', () => { resize(); spawn(); });
-    if (o.pauseWhenOffscreen && 'IntersectionObserver' in window){
+    window.addEventListener('resize', resize);
+    if ('IntersectionObserver' in window){
       const io = new IntersectionObserver(([e]) => { isVisible = e.isIntersecting; }, { threshold: 0 });
       io.observe(canvas);
     }
@@ -928,13 +997,23 @@
     else window.addEventListener('load', start);
   }
 
-  // Hero (canvas grande)
+  // Hero — Cérebro
   const heroCanvas = document.getElementById('brain-canvas');
-  if (heroCanvas) createParticleNetwork(heroCanvas, { count: 38, maxDist: 0.22, glowChance: 0.2 });
+  if (heroCanvas) createShapedNetwork(heroCanvas, {
+    count: 55, shape: brainShape, scale: 0.40, maxDist: 0.14, glowChance: 0.22, pointSize: 1.4
+  });
 
-  // Manifesto (canvas pequeno 320x320)
+  // Manifesto — Cérebro menor
   const neuralCanvas = document.getElementById('neural-canvas');
-  if (neuralCanvas) createParticleNetwork(neuralCanvas, { count: 22, maxDist: 0.32, glowChance: 0.25, pointSize: 1.5 });
+  if (neuralCanvas) createShapedNetwork(neuralCanvas, {
+    count: 36, shape: brainShape, scale: 0.42, maxDist: 0.22, glowChance: 0.28, pointSize: 1.5
+  });
+
+  // Agents — Pessoa (infraestrutura)
+  const agentsPersonCanvas = document.getElementById('agents-person');
+  if (agentsPersonCanvas) createShapedNetwork(agentsPersonCanvas, {
+    count: PERSON_POINTS.length, shape: personShape, scale: 0.42, maxDist: 0.20, glowChance: 0.22, pointSize: 1.5, driftAmp: 4
+  });
 
   /* Backgrounds das seções: opacidade fixa via CSS + Ken Burns sutil contínuo via keyframes.
      Sem fade-in scroll-driven, sem parallax exagerado — discreto e profissional. */
