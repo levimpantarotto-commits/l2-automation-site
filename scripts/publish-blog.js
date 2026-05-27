@@ -188,6 +188,9 @@ function renderPost(post, allPosts) {
     /* Article container */
     article{max-width:760px;margin:120px auto 80px;padding:0 32px;}
     .article-header{margin-bottom:48px;}
+    .article-hero-image{margin:0 -32px 40px;border-radius:6px;overflow:hidden;aspect-ratio:16/9;background:var(--black2);border:1px solid var(--line);}
+    .article-hero-image img{width:100%;height:100%;object-fit:cover;display:block;}
+    @media(min-width:760px){.article-hero-image{margin-left:-60px;margin-right:-60px;}}
     .article-category{font-size:11px;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;display:inline-block;}
     .article-title{font-size:clamp(32px,4.5vw,52px);font-weight:900;letter-spacing:-.025em;line-height:1.08;margin-bottom:22px;}
     .article-meta{font-size:13px;color:var(--mute);display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
@@ -273,6 +276,7 @@ function renderPost(post, allPosts) {
 
   <article>
     <header class="article-header">
+      ${post.heroImage ? `<div class="article-hero-image"><img src="${escapeHtml(post.heroImage)}" alt="${escapeHtml(post.title)}" loading="eager"${post.heroImageFallback ? ` onerror="this.onerror=null;this.src='${escapeHtml(post.heroImageFallback)}'"` : ''}/></div>` : ''}
       <span class="article-category">${escapeHtml(post.category)}</span>
       <h1 class="article-title">${escapeHtml(post.title)}</h1>
       <div class="article-meta">
@@ -392,8 +396,12 @@ function renderIndex(publishedPosts) {
     .hero-blog p{margin:28px auto 0;color:var(--mute);font-size:17px;line-height:1.65;max-width:48ch;}
 
     .posts-grid{max-width:1180px;margin:0 auto;padding:0 40px 100px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:28px;}
-    .post-card{background:var(--black2);border:1px solid var(--line);border-radius:6px;padding:34px 32px;display:flex;flex-direction:column;gap:18px;text-decoration:none;color:inherit;transition:border-color .35s,transform .35s,box-shadow .35s;}
+    .post-card{background:var(--black2);border:1px solid var(--line);border-radius:6px;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;color:inherit;transition:border-color .35s,transform .35s,box-shadow .35s;}
     .post-card:hover{border-color:rgba(212,175,55,.35);transform:translateY(-3px);box-shadow:0 22px 50px -20px rgba(0,0,0,.6);text-decoration:none;}
+    .post-card .pc-thumb{aspect-ratio:16/9;overflow:hidden;background:linear-gradient(135deg,#0f0f12 0%,#18140a 100%);position:relative;}
+    .post-card .pc-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s ease;}
+    .post-card:hover .pc-thumb img{transform:scale(1.04);}
+    .post-card .pc-body{padding:28px 30px 26px;display:flex;flex-direction:column;gap:14px;flex:1;}
     .post-card .pc-cat{font-size:10px;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);}
     .post-card h2{font-size:21px;font-weight:800;letter-spacing:-.015em;line-height:1.3;color:var(--white);}
     .post-card .pc-desc{color:var(--mute);font-size:14px;line-height:1.65;}
@@ -441,12 +449,15 @@ function renderIndex(publishedPosts) {
   <section class="posts-grid">
     ${sorted.map(p => `
     <a href="/blog/${p.slug}" class="post-card">
-      <span class="pc-cat">${escapeHtml(p.category)}</span>
-      <h2>${escapeHtml(p.title)}</h2>
-      <p class="pc-desc">${escapeHtml(p.description)}</p>
-      <div class="pc-meta">
-        <time>${formatDate(p.publishDate)}</time>
-        <span class="read">${p.readTime || '6 min'}</span>
+      ${p.heroImage ? `<div class="pc-thumb"><img src="${escapeHtml(p.heroImage)}" alt="${escapeHtml(p.title)}" loading="lazy"${p.heroImageFallback ? ` onerror="this.onerror=null;this.src='${escapeHtml(p.heroImageFallback)}'"` : ''}/></div>` : ''}
+      <div class="pc-body">
+        <span class="pc-cat">${escapeHtml(p.category)}</span>
+        <h2>${escapeHtml(p.title)}</h2>
+        <p class="pc-desc">${escapeHtml(p.description)}</p>
+        <div class="pc-meta">
+          <time>${formatDate(p.publishDate)}</time>
+          <span class="read">${p.readTime || '6 min'}</span>
+        </div>
       </div>
     </a>
     `).join('')}

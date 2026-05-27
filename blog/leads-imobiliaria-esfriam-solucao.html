@@ -72,6 +72,9 @@
     /* Article container */
     article{max-width:760px;margin:120px auto 80px;padding:0 32px;}
     .article-header{margin-bottom:48px;}
+    .article-hero-image{margin:0 -32px 40px;border-radius:6px;overflow:hidden;aspect-ratio:16/9;background:var(--black2);border:1px solid var(--line);}
+    .article-hero-image img{width:100%;height:100%;object-fit:cover;display:block;}
+    @media(min-width:760px){.article-hero-image{margin-left:-60px;margin-right:-60px;}}
     .article-category{font-size:11px;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;display:inline-block;}
     .article-title{font-size:clamp(32px,4.5vw,52px);font-weight:900;letter-spacing:-.025em;line-height:1.08;margin-bottom:22px;}
     .article-meta{font-size:13px;color:var(--mute);display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
@@ -157,6 +160,7 @@
 
   <article>
     <header class="article-header">
+      <div class="article-hero-image"><img src="/img/posts/leads-imobiliaria-esfriam-solucao.webp" alt="Por que 70% dos leads da sua imobiliária esfriam — e a solução em 3 etapas" loading="eager" onerror="this.onerror=null;this.src='/img/bg-manifesto.webp'"/></div>
       <span class="article-category">Imobiliárias</span>
       <h1 class="article-title">Por que 70% dos leads da sua imobiliária esfriam — e a solução em 3 etapas</h1>
       <div class="article-meta">
