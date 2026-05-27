@@ -14,3 +14,6 @@ ChatGPT*.png
 
 # Painel interno LinkedIn (uso local apenas)
 linkedin/
+
+# Documento Word interno (uso local apenas)
+*.docx
