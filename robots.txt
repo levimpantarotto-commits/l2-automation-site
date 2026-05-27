@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://l2automation.com.br/sitemap.xml
