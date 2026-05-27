@@ -1,0 +1,40 @@
+name: Publish Blog Posts
+
+on:
+  schedule:
+    # Roda todo dia às 11:00 UTC (= 08:00 BRT)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run blog publisher
+        run: node scripts/publish-blog.js
+
+      - name: Commit and push if changes
+        run: |
+          git config user.name "L2 Blog Bot"
+          git config user.email "bot@l2automation.com.br"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "Nada novo pra publicar hoje."
+          else
+            git commit -m "Auto-publish: posts agendados em $(date -u +%Y-%m-%d)"
+            git push
+            echo "Posts publicados."
+          fi
