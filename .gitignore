@@ -11,3 +11,6 @@ ChatGPT*.png
 # Vídeos fonte ficam locais — só os frames vão pro deploy
 *.mp4
 *.mov
+
+# Painel interno LinkedIn (uso local apenas)
+linkedin/
