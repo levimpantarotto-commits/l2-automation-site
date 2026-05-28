@@ -98,28 +98,30 @@ PASTAS_PUBLICAS.forEach(p => {
   if (fs.existsSync(dir)) app.use(`/${p}`, express.static(dir, { maxAge: '7d' }));
 });
 
-// Aliases admin (HTML standalone — ANTES do SPA fallback)
+// Aliases admin (HTML standalone — ANTES do SPA fallback do React)
+app.get('/admin', (req, res) => res.redirect('/admin/'));
+app.get('/admin/', (req, res) => res.sendFile(path.join(__dirname, 'home-admin.html')));
 app.get('/admin/inbox', (req, res) => res.sendFile(path.join(__dirname, 'inbox.html')));
 app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard-admin.html')));
 app.get('/admin/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads-admin.html')));
 app.get('/admin/config', (req, res) => res.sendFile(path.join(__dirname, 'config-admin.html')));
 
-// Painel admin — dashboard React buildado pelo Vite (public/admin/)
-// Fallback: admin/index.html simples (legacy) caso dashboard não esteja buildado
+// Painel React antigo fica em /admin/painel-antigo/ (não é mais a home)
 const adminBuilt = path.join(__dirname, 'public/admin');
 if (fs.existsSync(adminBuilt)) {
-  app.use('/admin', express.static(adminBuilt, { maxAge: 0 }));
-  // SPA: rotas internas do React (ex: /admin/kanban) devolvem index.html
-  app.get('/admin/*', (req, res) => res.sendFile(path.join(adminBuilt, 'index.html')));
-} else {
-  app.use('/admin', express.static(path.join(__dirname, 'admin'), { maxAge: 0 }));
+  // Vite buildou com base /admin/ — assets carregam de /admin/assets/...
+  // Mantemos esse path funcionando pro React rodar quando acessado via /admin/painel-antigo/
+  app.use('/admin/assets', express.static(path.join(adminBuilt, 'assets'), { maxAge: 0 }));
+  app.use('/admin/painel-antigo/assets', express.static(path.join(adminBuilt, 'assets'), { maxAge: 0 }));
+  app.use('/admin/painel-antigo', express.static(adminBuilt, { maxAge: 0 }));
+  app.get('/admin/painel-antigo/*', (req, res) => res.sendFile(path.join(adminBuilt, 'index.html')));
 }
 
 // HTML/recursos da raiz (whitelist explícita)
 const ARQS_RAIZ = [
   'index.html', 'avatares-teste.html', 'escritorio-3d-teste.html', 'escritorioteste.html',
   'sitemap.xml', 'robots.txt', 'logo.svg', 'inbox.html',
-  'dashboard-admin.html', 'leads-admin.html', 'config-admin.html',
+  'dashboard-admin.html', 'leads-admin.html', 'config-admin.html', 'home-admin.html',
 ];
 ARQS_RAIZ.forEach(arq => {
   const file = path.join(__dirname, arq);
