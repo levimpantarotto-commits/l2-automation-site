@@ -241,14 +241,31 @@ app.get('/api/auth/me', (req, res) => {
 app.post('/api/auth/login', (req, res) => res.json({ success: true, user: { username: 'admin' } }));
 app.post('/api/auth/logout', (req, res) => res.json({ success: true }));
 
-// Clientes (no L2 vamos usar multi-tenant futuro; por enquanto 1 fixo)
+// Clientes (multi-tenant futuro; por enquanto 1 fixo - L2 Automation próprio)
 app.get('/api/clientes', (req, res) => {
   res.json([
-    { slug: 'l2-automation', nome: 'L2 Automation', ativo: 1 },
+    { slug: 'l2-automation', nome: 'L2 Automation', ativo: 1, auto_pilot: 0 },
   ]);
 });
 app.get('/api/clientes/:slug', (req, res) => {
-  res.json({ slug: req.params.slug, nome: 'L2 Automation', ativo: 1, dna: null });
+  res.json({
+    cliente: {
+      slug: req.params.slug,
+      nome: 'L2 Automation',
+      ativo: 1,
+      auto_pilot: 0,
+      vault_folder: null,
+      dna: null,
+    },
+    stats: {
+      manualPosts: 0,
+      autoPosts: 0,
+      totalPosts: 0,
+      aprovados: 0,
+      pendentes: 0,
+    },
+    dna: { extracted_at: null, content: 'Cérebro do cliente ainda não configurado. Integração com Obsidian em desenvolvimento.' },
+  });
 });
 
 // Posts/Roteiros/Calendário (stub vazio até implementar)

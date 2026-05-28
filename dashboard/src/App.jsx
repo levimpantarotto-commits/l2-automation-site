@@ -1191,11 +1191,8 @@ function AppCore({ authedUser, onLogout }) {
         <nav>
           <button className={`nav-item ${view === 'kanban' ? 'active' : ''}`} onClick={() => setView('kanban')}>Kanban</button>
           <button className={`nav-item ${view === 'cerebro' ? 'active' : ''}`} onClick={() => setView('cerebro')}>Cérebro</button>
-          <button className={`nav-item ${view === 'roteiros' ? 'active' : ''}`} onClick={() => setView('roteiros')}>Roteiros</button>
+          <button className={`nav-item ${view === 'roteiros' ? 'active' : ''}`} onClick={() => setView('roteiros')}>Arquivos</button>
           <button className={`nav-item ${view === 'aprovacoes' ? 'active' : ''}`} onClick={() => setView('aprovacoes')}>Aprovações</button>
-          <button className={`nav-item ${view === 'trafego' ? 'active' : ''}`} onClick={() => setView('trafego')}>Tráfego Pago</button>
-          <button className={`nav-item ${view === 'yt-trends' ? 'active' : ''}`} onClick={() => setView('yt-trends')}>Tendências YT</button>
-          <button className={`nav-item ${view === 'miner' ? 'active' : ''}`} onClick={() => setView('miner')}>Inteligência</button>
           <button className={`nav-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>Calendário</button>
           <button className={`nav-item ${view === 'escritorio' ? 'active' : ''}`} onClick={() => setView('escritorio')}>Escritório 3D</button>
           {authedUser?.role === 'admin' && (
