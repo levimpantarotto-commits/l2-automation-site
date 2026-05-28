@@ -99,8 +99,9 @@ PASTAS_PUBLICAS.forEach(p => {
 });
 
 // Aliases admin (HTML standalone — ANTES do SPA fallback do React)
-app.get('/admin', (req, res) => res.redirect('/admin/'));
-app.get('/admin/', (req, res) => res.sendFile(path.join(__dirname, 'home-admin.html')));
+const sendHome = (req, res) => res.sendFile(path.join(__dirname, 'home-admin.html'));
+app.get('/admin', sendHome);
+app.get('/admin/', sendHome);
 app.get('/admin/inbox', (req, res) => res.sendFile(path.join(__dirname, 'inbox.html')));
 app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard-admin.html')));
 app.get('/admin/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads-admin.html')));
