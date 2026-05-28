@@ -21,7 +21,7 @@ export default function OfficeArena() {
     }}>
       <iframe
         src="/admin/escritorio.html"
-        title="Escritório LMP — Sala OSIA"
+        title="Escritório L2 — Sala OSIA"
         style={{
           width: '100%',
           height: '100%',

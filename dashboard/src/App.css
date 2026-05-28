@@ -6,9 +6,10 @@
   --surface-1: #111111;
   --surface-2: #1a1a1a;
   --surface-3: #222222;
-  --accent: #ed6f5c; 
-  --accent-glow: rgba(237, 111, 92, 0.2);
-  --accent-mute: #a39688; 
+  /* L2 Automation — paleta dourada (era coral #ed6f5c no LMP) */
+  --accent: #D4AF37;
+  --accent-glow: rgba(212, 175, 55, 0.25);
+  --accent-mute: #7A7568;
   --text: #fdfdfd;
   --text-2: #c4c4c4;
   --text-3: #888888;

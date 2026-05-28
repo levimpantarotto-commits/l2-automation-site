@@ -54,7 +54,7 @@ export default function Login({ onLogin }) {
       >
         <div style={{ marginBottom: 24, textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: '#fbbf24', letterSpacing: 3, textTransform: 'uppercase' }}>
-            LMP Social Engine
+            L2 Automation
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 600, margin: '8px 0 4px', color: '#fef3c7' }}>
             Acesso ao Admin

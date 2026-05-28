@@ -561,7 +561,7 @@ function AppCore({ authedUser, onLogout }) {
         </div>
         {post.isAuto && (
           <div className="auto-info-header">
-            <span className="auto-badge">AUTO ELITE</span>
+            <span className="auto-badge">AUTO L2</span>
             {post.score && (
               <span className={`score-badge ${post.score >= 95 ? 'score-high' : post.score >= 80 ? 'score-mid' : 'score-low'}`}>
                 Engajamento: {post.score}%
@@ -1174,7 +1174,7 @@ function AppCore({ authedUser, onLogout }) {
     );
   };
 
-  if (loading) return <div className="loading">LMP Social Engine v9.5 — Inicializando...</div>;
+  if (loading) return <div className="loading">L2 Automation — Inicializando...</div>;
 
   const COLUMNS = [
     { key: 'approval', label: 'Aguardando Aval' },
@@ -1187,7 +1187,7 @@ function AppCore({ authedUser, onLogout }) {
   return (
     <div className="app-wrapper">
       <aside className="sidebar">
-        <div className="sidebar-logo">LMP <span>ENGINE</span></div>
+        <div className="sidebar-logo">L2 <span>AUTOMATION</span></div>
         <nav>
           <button className={`nav-item ${view === 'kanban' ? 'active' : ''}`} onClick={() => setView('kanban')}>Kanban</button>
           <button className={`nav-item ${view === 'cerebro' ? 'active' : ''}`} onClick={() => setView('cerebro')}>Cérebro</button>
@@ -1235,7 +1235,7 @@ function AppCore({ authedUser, onLogout }) {
       </aside>
       <main className="main-area">
         <header className="header-v8">
-          <h2>Social Engine <span>v9.5 (Elite)</span></h2>
+          <h2>L2 Automation</h2>
           <div className="status-group">
             <div className="cliente-switcher">
               <label className="cliente-switcher-label">Cliente Ativo</label>
@@ -1334,7 +1334,7 @@ function AppCore({ authedUser, onLogout }) {
                   {/* Faixa logo */}
                   <g transform="translate(380 615)">
                     <rect x="0" y="0" width="240" height="20" rx="2" fill="rgba(201,168,76,0.1)" stroke="var(--border)" />
-                    <text x="120" y="14" textAnchor="middle" fontSize="11" className="logo-empresa">LMP SOCIAL ENGINE</text>
+                    <text x="120" y="14" textAnchor="middle" fontSize="11" className="logo-empresa">L2 AUTOMATION</text>
                   </g>
 
                   {/* SALA CENTRAL DO MAESTRO */}
