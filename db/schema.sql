@@ -100,6 +100,9 @@ CREATE TABLE IF NOT EXISTS conversas (
   template_id TEXT,
   abertura INTEGER DEFAULT 0,        -- pra email (1 se foi aberto)
   clique INTEGER DEFAULT 0,          -- pra email/linkedin (1 se clicou link)
+  status TEXT DEFAULT 'aberta',      -- aberta | aguardando_resposta | respondida | encerrada
+  ultimo_msg TIMESTAMP,
+  followups_count INTEGER DEFAULT 0,
   metadata TEXT,                     -- JSON
   FOREIGN KEY (lead_id) REFERENCES leads(id)
 );
@@ -122,6 +125,7 @@ CREATE TABLE IF NOT EXISTS failures (
   ultimo_caso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   resolvido_em TIMESTAMP,
   diagnostico_ia TEXT,               -- análise do Gemini/Claude
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (agente) REFERENCES agentes(nome)
 );
 

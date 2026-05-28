@@ -26,11 +26,21 @@ try {
   console.error('[boot] erro aplicando schema:', e.message);
 }
 
-// Auto-popula agentes se tabela vazia
-const agentesCount = db.prepare('SELECT COUNT(*) AS c FROM agentes').get().c;
-if (agentesCount === 0) {
-  console.log('[boot] tabela agentes vazia, rodando init-db...');
-  require('./scripts/init-db.js');
+// Migrations defensivas — adicionar colunas em DBs antigos (SQLite ignora se já existe via try/catch)
+function tryAddColumn(table, col, def) {
+  try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`); } catch (_) {}
+}
+tryAddColumn('conversas', 'status', "TEXT DEFAULT 'aberta'");
+tryAddColumn('conversas', 'ultimo_msg', 'TIMESTAMP');
+tryAddColumn('conversas', 'followups_count', 'INTEGER DEFAULT 0');
+tryAddColumn('failures', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+
+// Auto-popula/atualiza agentes (idempotente — roda sempre pra refletir mudanças do código)
+try {
+  const { seed } = require('./scripts/init-db.js');
+  seed(db);
+} catch (e) {
+  console.error('[boot] init-db falhou:', e.message);
 }
 
 console.log(`[boot] DB: ${DB_PATH} · agentes: ${db.prepare('SELECT COUNT(*) AS c FROM agentes').get().c}`);
@@ -356,18 +366,25 @@ app.post('/api/maestro', (req, res) => {
 });
 
 // ============================================================
-// CRON SCHEDULER (simples — setInterval) — dispara agentes com cron_ativo
+// CRON SCHEDULER (node-cron) — dispara agentes pelo cron_expr do DB
+// Lê tabela agentes (cron_ativo=1) e agenda jobs. Hot-reload a cada 60s.
 // ============================================================
-const cronExpressions = {}; // cache
-function parseCronAndShouldRun(expr) {
-  if (!expr) return false;
-  // Implementação simplificada: aceita 5 campos clássicos (min, hr, dom, mon, dow)
-  // Pra robustez, próxima versão usar 'node-cron' mas pra MVP o setInterval com check
-  // a cada minuto cobre os casos comuns.
-  return true; // Placeholder — só usa quando expr tá presente
+let schedulerInstance = null;
+try {
+  const startScheduler = require('./agents/scheduler');
+  schedulerInstance = startScheduler(db);
+} catch (e) {
+  console.error('[boot] scheduler falhou:', e.message);
 }
 
-// (Cron real será adicionado na próxima iteração — por enquanto agentes rodam manualmente)
+// Endpoint pra ver estado do scheduler
+app.get('/api/scheduler/status', (req, res) => {
+  if (!schedulerInstance) return res.json({ ativo: false, jobs: [] });
+  const jobs = Array.from(schedulerInstance.jobs.entries()).map(([nome, info]) => ({
+    nome, cron_expr: info.cron_expr,
+  }));
+  res.json({ ativo: true, total: jobs.length, jobs });
+});
 
 // ============================================================
 // START

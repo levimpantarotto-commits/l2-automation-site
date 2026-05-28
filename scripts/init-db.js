@@ -1,23 +1,13 @@
-// Inicializa o SQLite com schema + agentes pré-cadastrados
+// Inicializa o SQLite com schema + agentes pré-cadastrados.
+// Pode ser chamado de duas formas:
+//   - CLI: `node scripts/init-db.js` (abre/fecha própria conexão)
+//   - Inline: `require('./scripts/init-db.js').seed(db)` (usa conexão existente)
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
 
 const DB_PATH = process.env.DB_PATH || './data/l2.db';
 const SCHEMA_PATH = path.join(__dirname, '../db/schema.sql');
-
-// Garante diretório
-const dir = path.dirname(DB_PATH);
-if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-// Aplica schema
-const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
-db.exec(schema);
-console.log('[init-db] Schema aplicado em', DB_PATH);
 
 // Agentes do sistema L2 (definição declarativa)
 const AGENTES_BASE = [
@@ -54,14 +44,14 @@ const AGENTES_BASE = [
     label: 'Outbound Email',
     descricao: 'Envia email personalizado pra leads enriquecidos. Trackeia abertura.',
     cron_expr: '0 11 * * 1-5',
-    cron_ativo: 0,
+    cron_ativo: 1, // dry-run até RESEND_API_KEY configurado
   },
   {
     nome: 'sdr_neural',
     label: 'SDR Neural',
     descricao: 'Responde mensagens recebidas. Qualifica BANT. Encaminha quentes pro humano.',
-    cron_expr: null, // event-driven, não cron
-    cron_ativo: 0,
+    cron_expr: '*/30 * * * *', // check follow-ups a cada 30min
+    cron_ativo: 1,
   },
   {
     nome: 'analytics',
@@ -79,19 +69,34 @@ const AGENTES_BASE = [
   },
 ];
 
-const upsert = db.prepare(`
-  INSERT INTO agentes (nome, label, descricao, status, cron_expr, cron_ativo)
-  VALUES (@nome, @label, @descricao, 'aguardando', @cron_expr, @cron_ativo)
-  ON CONFLICT(nome) DO UPDATE SET
-    label = excluded.label,
-    descricao = excluded.descricao,
-    cron_expr = excluded.cron_expr,
-    cron_ativo = excluded.cron_ativo,
-    updated_at = CURRENT_TIMESTAMP
-`);
+function seed(db) {
+  const upsert = db.prepare(`
+    INSERT INTO agentes (nome, label, descricao, status, cron_expr, cron_ativo)
+    VALUES (@nome, @label, @descricao, 'aguardando', @cron_expr, @cron_ativo)
+    ON CONFLICT(nome) DO UPDATE SET
+      label = excluded.label,
+      descricao = excluded.descricao,
+      cron_expr = excluded.cron_expr,
+      cron_ativo = excluded.cron_ativo,
+      updated_at = CURRENT_TIMESTAMP
+  `);
+  for (const ag of AGENTES_BASE) upsert.run(ag);
+  console.log(`[init-db] ${AGENTES_BASE.length} agentes registrados/atualizados`);
+}
 
-for (const ag of AGENTES_BASE) upsert.run(ag);
-console.log(`[init-db] ${AGENTES_BASE.length} agentes registrados/atualizados`);
+module.exports = { seed, AGENTES_BASE };
 
-db.close();
-console.log('[init-db] OK');
+// CLI mode — abre/fecha própria conexão
+if (require.main === module) {
+  const dir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  const db = new Database(DB_PATH);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
+  const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
+  db.exec(schema);
+  console.log('[init-db] Schema aplicado em', DB_PATH);
+  seed(db);
+  db.close();
+  console.log('[init-db] OK');
+}
