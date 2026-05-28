@@ -112,6 +112,8 @@ app.get('/admin/ideias', (req, res) => res.sendFile(path.join(__dirname, 'ideias
 app.get('/admin/ia', (req, res) => res.sendFile(path.join(__dirname, 'ia-admin.html')));
 app.get('/admin/comecar', (req, res) => res.sendFile(path.join(__dirname, 'comecar-admin.html')));
 app.get('/admin/cerebro', (req, res) => res.sendFile(path.join(__dirname, 'cerebro-admin.html')));
+app.get('/admin/sobre', (req, res) => res.sendFile(path.join(__dirname, 'sobre-admin.html')));
+app.get('/admin/agente/:nome', (req, res) => res.sendFile(path.join(__dirname, 'agente-admin.html')));
 app.get('/admin/escritorio.html', (req, res) => {
   const built = path.join(__dirname, 'public/admin/escritorio.html');
   if (fs.existsSync(built)) return res.sendFile(built);
@@ -135,7 +137,7 @@ const ARQS_RAIZ = [
   'sitemap.xml', 'robots.txt', 'logo.svg', 'inbox.html',
   'dashboard-admin.html', 'leads-admin.html', 'config-admin.html', 'home-admin.html',
   'posts-admin.html', 'roteiros-admin.html', 'ideias-admin.html', 'ia-admin.html',
-  'comecar-admin.html', 'cerebro-admin.html',
+  'comecar-admin.html', 'cerebro-admin.html', 'sobre-admin.html', 'agente-admin.html',
 ];
 ARQS_RAIZ.forEach(arq => {
   const file = path.join(__dirname, arq);

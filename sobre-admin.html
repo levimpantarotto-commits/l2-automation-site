@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><title>L2 · Sobre o sistema</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-deep:#8B6F1F;--text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88; --warn:#ffb800; --err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+  section { margin-bottom: 40px; }
+  h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent);
+    margin-bottom: 16px; font-weight: 700; padding-left: 14px; border-left: 3px solid var(--accent); }
+  p { line-height: 1.7; color: var(--text-2); margin-bottom: 12px; font-size: 14px; }
+  .agente {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+    padding: 22px 26px; margin-bottom: 14px; border-left: 3px solid var(--accent);
+  }
+  .agente-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .agente-nome { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.015em; text-transform: uppercase; }
+  .agente-cron { font-size: 10px; color: var(--accent); letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; font-family: monospace; }
+  .agente p { font-size: 13px; margin-bottom: 8px; }
+  .agente strong { color: var(--text); }
+  .deps { font-size: 11px; color: var(--text-3); margin-top: 10px; letter-spacing: 0.05em; }
+  .deps strong { color: var(--warn); }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>Sobre o sistema</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">O que cada agente faz · em português</p></div>
+  <span class="badge">L2 Automation</span>
+</header>
+
+<nav class="top">
+  <a href="/admin/">Home</a><a href="/admin/inbox">Inbox</a><a href="/admin/leads">Leads</a>
+  <a href="/admin/dashboard">Dashboard</a><a href="/admin/posts">Posts</a>
+  <a href="/admin/roteiros">Roteiros</a><a href="/admin/ideias">Ideias</a>
+  <a href="/admin/ia">Fila IA</a><a href="/admin/cerebro">Cérebro</a>
+  <a href="/admin/comecar">Começar</a><a href="/admin/sobre" class="active">Sobre</a>
+  <a href="/admin/config" style="margin-left: auto;">Config</a>
+</nav>
+
+<section>
+  <h2>Visão geral</h2>
+  <p>O <strong>L2 Automation</strong> é um sistema autônomo que faz <strong>2 trabalhos paralelos</strong>:</p>
+  <p>
+    <strong>1. Prospecção B2B fria</strong> — acha empresas que batem teu ICP (CNPJ Finder), enriquece dados (Enricher), pontua via BANT, e abre conversa por email (Outbound Email + SDR Neural). Você vê os leads em <a href="/admin/leads" style="color: var(--accent)">/admin/leads</a> e aprova mensagens em <a href="/admin/inbox" style="color: var(--accent)">/admin/inbox</a>.
+  </p>
+  <p>
+    <strong>2. Marketing de conteúdo</strong> — transforma ideias e transcrições do Drive em posts (LinkedIn/Instagram), roteiros (Reels/Shorts/YouTube) e resumos executivos. Geração via <strong>Claude Max local</strong> (sem custo API). Posts vão pra <a href="/admin/posts" style="color: var(--accent)">/admin/posts</a> aprovar.
+  </p>
+  <p>Por baixo de tudo tem agentes de manutenção (Self-Debugger, Janitor, Backup) e o Maestro orquestrando.</p>
+</section>
+
+<section>
+  <h2>Agentes de prospecção</h2>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">CNPJ Finder</span>
+      <span class="agente-cron">8h dia útil</span>
+    </div>
+    <p>Procura CNPJs novos que batem teu ICP (CNAE + UF + porte + capital).</p>
+    <p><strong>Como funciona:</strong> usa o dump da Receita Federal (offline, sem bloqueio) se tiver instalado, senão tenta Casa dos Dados (bloqueia com Cloudflare).</p>
+    <p>Joga CNPJs novos na fila do Prospector pra enriquecimento.</p>
+    <div class="deps"><strong>Depende:</strong> dump Receita ou Apify pago. <a href="/admin/comecar" style="color: var(--accent)">Setup →</a></div>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Prospector</span>
+      <span class="agente-cron">9h dia útil</span>
+    </div>
+    <p>Pega um CNPJ "cru" e enriquece com razão social, sócios, telefone, endereço, CNAE descrito, etc.</p>
+    <p><strong>Como funciona:</strong> consulta BrasilAPI (gratuita). Salva como lead com status <code style="background: var(--surface-2); padding: 2px 6px; border-radius: 2px;">novo</code>.</p>
+    <div class="deps">Sem dependência externa paga.</div>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Enricher</span>
+      <span class="agente-cron">10h dia útil</span>
+    </div>
+    <p>Filtra leads pelo ICP (passa/descarta) e calcula <strong>BANT score</strong> (0-100): Budget + Authority + Need + Timeline.</p>
+    <p><strong>Lead com score &lt;40 é descartado automaticamente.</strong> Score ≥80 vira "qualificado" depois.</p>
+    <p>Se tem Hunter.io configurado, busca email do decisor (CEO/diretor).</p>
+    <div class="deps">Opcional: <strong>HUNTER_API_KEY</strong> pra email de decisor</div>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Outbound Email</span>
+      <span class="agente-cron">11h seg-sex</span>
+    </div>
+    <p>Manda email pra leads enriquecidos. Cada mensagem é gerada pelo Copywriter (usando Cérebro de Persuasão).</p>
+    <p>Respeita: <strong>opt-out</strong>, <strong>dedup 90 dias</strong>, <strong>rate limit</strong> (50/dia padrão).</p>
+    <p>Se auto-pilot OFF ou confiança baixa → vai pra Inbox aprovar.</p>
+    <p>Agenda automaticamente follow-ups D+3, D+7, D+15.</p>
+    <div class="deps"><strong>Depende:</strong> Gmail SMTP (recomendado) ou Resend. Sem isso, fica em dry-run.</div>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">SDR Neural</span>
+      <span class="agente-cron">30 em 30 min</span>
+    </div>
+    <p>Dois jobs: <strong>(1)</strong> processa follow-ups da régua D+3/D+7/D+15; <strong>(2)</strong> reage a respostas recebidas (gera continuação pra Inbox aprovar).</p>
+    <p>Cancela follow-ups automaticamente quando lead responde.</p>
+    <p>Reage em tempo real via event-worker (não precisa esperar 30min se evento chegou).</p>
+    <div class="deps"><strong>Depende:</strong> mesma config do Outbound Email.</div>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Copywriter</span>
+      <span class="agente-cron">on-demand</span>
+    </div>
+    <p>Gera copy personalizada por lead usando: <strong>persona do nicho</strong> + <strong>DNA do cliente</strong> + <strong>7 livros do Cérebro de Persuasão</strong> (Kahneman, Damásio, Sobral, Clássicos).</p>
+    <p>Modo padrão: Gemini API ou Claude Max via fila local. Fallback: template fixo (Sobral 4 camadas).</p>
+    <div class="deps">Recomendado: <strong>worker Claude Max local</strong> pra copy de alta qualidade sem custo</div>
+  </div>
+</section>
+
+<section>
+  <h2>Agentes de marketing</h2>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Post Generator</span>
+      <span class="agente-cron">8h dia útil</span>
+    </div>
+    <p>Gera <strong>6 posts/dia</strong> — 3 ideias × 2 redes (LinkedIn + Instagram) × 2 variações.</p>
+    <p>Cada post personalizado: gancho, body, hashtags, CTA. Usa frameworks do Cérebro.</p>
+    <p>Vai pra fila Claude Max processar. Resultado aparece em <a href="/admin/posts" style="color: var(--accent)">/admin/posts</a> pra aprovação.</p>
+    <div class="deps"><strong>Depende:</strong> ideias no banco + worker Claude Max rodando local.</div>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Video Prototyper</span>
+      <span class="agente-cron">seg/qua/sex 9h</span>
+    </div>
+    <p>Gera roteiros pra Reels/Shorts/YouTube com: gancho 3s, cenas numeradas com [cue visual], CTA, sugestão de thumb.</p>
+    <p><strong>Não gera vídeo</strong> (precisa Runway/Sora paga). Só roteiro pra você gravar.</p>
+    <div class="deps"><strong>Depende:</strong> ideias + worker Claude Max.</div>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Drive Sync</span>
+      <span class="agente-cron">30 em 30 min</span>
+    </div>
+    <p>Resume transcrições de reunião do Google Drive em ideias acionáveis (bullets, decisões, ângulos de conteúdo).</p>
+    <p>O <strong>pull do Drive</strong> precisa rodar local (<code style="background: var(--surface-2); padding: 2px 6px; border-radius: 2px;">scripts/drive-puller.js</code>) com Service Account configurada.</p>
+    <p>O agente em si só processa transcrições que já chegaram ao banco.</p>
+    <div class="deps"><strong>Depende:</strong> Service Account Google + folder_id + worker Claude Max</div>
+  </div>
+</section>
+
+<section>
+  <h2>Agentes de manutenção</h2>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Maestro</span>
+      <span class="agente-cron">a cada 5 min</span>
+    </div>
+    <p>Orquestrador. Decide o que disparar baseado em estado: leads novos → enricher; enriquecidos → outbound; conversas paradas → sdr; failures → self_debugger.</p>
+    <p>Hoje é polling. Quando o event-worker pega evento, reage imediato (não espera 5min).</p>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Self-Debugger</span>
+      <span class="agente-cron">a cada 15 min</span>
+    </div>
+    <p>Lê failures sem resolução tentada e classifica via Gemini (ou heurística): timeout, rate_limit, credencial_invalida, dependência_externa, etc.</p>
+    <p>Sugere correção pra cada padrão. Não aplica automaticamente — só registra pra você ver.</p>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Janitor</span>
+      <span class="agente-cron">4h da madrugada</span>
+    </div>
+    <p>Limpa banco antigo: runs &gt;30d, eventos processados &gt;7d, rate_limits expirados.</p>
+    <p><strong>Auto-promove leads quentes:</strong> respondeu+score≥60 ou score≥85 viram "qualificado" automaticamente.</p>
+    <p>Domingo madrugada: VACUUM no SQLite (compacta arquivo).</p>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Backup</span>
+      <span class="agente-cron">3h da madrugada</span>
+    </div>
+    <p>Hot-backup do SQLite via VACUUM INTO. Arquivos em <code style="background: var(--surface-2); padding: 2px 6px; border-radius: 2px;">/data/backups/l2-YYYY-MM-DD.db</code>. Mantém últimos 14 dias.</p>
+  </div>
+
+  <div class="agente">
+    <div class="agente-head">
+      <span class="agente-nome">Analytics</span>
+      <span class="agente-cron">hora em hora</span>
+    </div>
+    <p>Snapshot de métricas do funil + health dos agentes + top failures. Resultado vai pra eventos.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Infraestrutura por baixo</h2>
+  <p><strong>Event Worker</strong> — loop de 10s que consome a tabela <code>eventos</code> e dispara agentes imediatamente (lead_novo, lead_respondeu, aprovacao_pendente).</p>
+  <p><strong>Scheduler</strong> — node-cron com hot-reload de 60s. Lê tabela <code>agentes</code> e re-agenda jobs quando você muda config no banco.</p>
+  <p><strong>Auto-healing</strong> — toda execução de agente passa pelo AgenteBase: retry com backoff exponencial, registro de runs, memória de falhas pra autoaprendizado.</p>
+  <p><strong>Multi-tenant pronto</strong> mas usando 1 cliente (l2-automation). Suporta crescer pra N clientes sem refactor.</p>
+</section>
+</div>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><title>L2 · Agente</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-deep:#8B6F1F;--text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88; --warn:#ffb800; --err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-weight: 900; font-size: 2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .back { color: var(--text-3); text-decoration: none; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; }
+  .back:hover { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .stat { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; padding: 20px; }
+  .stat-label { font-size: 9px; color: var(--text-3); letter-spacing: 0.25em; text-transform: uppercase; font-weight: 700; }
+  .stat-value { font-size: 1.8rem; font-weight: 800; color: var(--accent); margin-top: 6px; letter-spacing: -0.03em; }
+  .stat-value.success { color: var(--success); }
+  .stat-value.err { color: var(--err); }
+  section { margin-bottom: 32px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; padding: 24px 28px; }
+  h2 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.22em; color: var(--accent); margin-bottom: 16px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: rgba(230,190,72,0.05); padding: 12px 16px; text-align: left; font-size: 10px;
+    color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+  td { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; }
+  .pill { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 9px;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .pill-sucesso { background: rgba(0,255,136,0.15); color: var(--success); }
+  .pill-erro { background: rgba(255,51,102,0.10); color: var(--err); }
+  .pill-rodando { background: rgba(255,184,0,0.15); color: var(--warn); }
+  button {
+    background: var(--surface-2); color: var(--accent); border: 1px solid var(--accent);
+    padding: 10px 22px; border-radius: 4px; cursor: pointer; font-family: inherit;
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;
+  }
+  button:hover { background: rgba(230,190,72,0.1); }
+  pre.json { background: var(--bg); padding: 14px; border-radius: 4px; font-size: 11px;
+    color: var(--text-3); white-space: pre-wrap; overflow-x: auto; max-height: 240px; }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; font-family: monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <a href="/admin/" class="back">← Painel</a>
+    <h1 id="agente-titulo" style="margin-top: 8px;">—</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;" id="agente-desc"></p>
+  </div>
+  <div style="text-align: right;">
+    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+      <span class="badge" id="agente-cron">—</span>
+      <span class="badge" id="agente-status">—</span>
+    </div>
+    <button onclick="disparar()">↻ Disparar agora</button>
+  </div>
+</header>
+
+<div class="grid">
+  <div class="stat"><div class="stat-label">Runs (24h)</div><div class="stat-value" id="s-runs">—</div></div>
+  <div class="stat"><div class="stat-label">Erros (24h)</div><div class="stat-value err" id="s-erros">—</div></div>
+  <div class="stat"><div class="stat-label">Último run</div><div class="stat-value" id="s-ultimo" style="font-size: 1rem; line-height: 1.4;">—</div></div>
+  <div class="stat"><div class="stat-label">Próximo run</div><div class="stat-value" id="s-proximo" style="font-size: 1rem; line-height: 1.4;">—</div></div>
+</div>
+
+<section>
+  <h2>Histórico de execuções (últimas 50)</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Início</th><th>Duração</th><th>Status</th><th>Modo</th><th>Retries</th><th>Erro</th></tr></thead>
+    <tbody id="runs-tbody"></tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Falhas conhecidas (padrões aprendidos)</h2>
+  <table>
+    <thead><tr><th>Padrão</th><th>Ocorrências</th><th>Último caso</th><th>Resolução tentada</th></tr></thead>
+    <tbody id="fails-tbody"></tbody>
+  </table>
+</section>
+
+</div>
+
+<script>
+const nome = location.pathname.split('/').pop();
+
+async function carregar() {
+  const [agStatus, runsR, failsR] = await Promise.all([
+    fetch('/api/agentes/status').then(r => r.json()),
+    fetch('/api/runs?agente=' + nome + '&limit=50').then(r => r.json()),
+    fetch('/api/failures').then(r => r.json()),
+  ]);
+
+  const ag = (agStatus.agentes || []).find(a => a.nome === nome);
+  if (!ag) {
+    document.getElementById('agente-titulo').textContent = nome + ' (não encontrado)';
+    return;
+  }
+
+  document.getElementById('agente-titulo').textContent = ag.label || nome;
+  document.getElementById('agente-desc').textContent = ag.descricao || '';
+  document.getElementById('agente-cron').textContent = ag.cron_expr || 'manual';
+  document.getElementById('agente-status').textContent = ag.status || 'aguardando';
+
+  document.getElementById('s-runs').textContent = ag.runs_24h || 0;
+  document.getElementById('s-erros').textContent = ag.erros_24h || 0;
+  document.getElementById('s-ultimo').textContent = ag.ultimo_run ? new Date(ag.ultimo_run.replace(' ', 'T') + 'Z').toLocaleString('pt-BR') : '—';
+  document.getElementById('s-proximo').textContent = ag.proximo_run ? new Date(ag.proximo_run.replace(' ', 'T') + 'Z').toLocaleString('pt-BR') : '—';
+
+  // Runs
+  const runs = runsR.runs || [];
+  document.getElementById('runs-tbody').innerHTML = runs.length === 0
+    ? '<tr><td colspan="7" style="text-align: center; color: var(--text-3); padding: 30px;">Nenhuma execução ainda</td></tr>'
+    : runs.map(r => `
+      <tr>
+        <td>${r.id}</td>
+        <td>${new Date(r.inicio.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
+        <td>${r.duracao_ms || '—'}ms</td>
+        <td><span class="pill pill-${r.status}">${r.status || '—'}</span></td>
+        <td>${r.modo || '—'}</td>
+        <td>${r.retry_count || 0}</td>
+        <td style="color: var(--err); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.erro || ''}</td>
+      </tr>
+    `).join('');
+
+  // Failures
+  const fails = (failsR.failures || []).filter(f => f.agente === nome);
+  document.getElementById('fails-tbody').innerHTML = fails.length === 0
+    ? '<tr><td colspan="4" style="text-align: center; color: var(--text-3); padding: 30px;">Nenhuma falha aprendida — bom sinal</td></tr>'
+    : fails.map(f => `
+      <tr>
+        <td style="color: var(--err);">${f.padrao_erro}</td>
+        <td><strong>${f.ocorrencias}x</strong></td>
+        <td>${new Date(f.ultimo_caso.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
+        <td style="color: var(--text-2); font-family: inherit; font-size: 12px; white-space: normal;">${f.resolucao_tentada || '—'}</td>
+      </tr>
+    `).join('');
+}
+
+async function disparar() {
+  const r = await fetch(`/api/agentes/${nome}/run`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  const data = await r.json();
+  alert(data.message || data.error || 'Disparado');
+  setTimeout(carregar, 1500);
+}
+
+carregar();
+setInterval(carregar, 10000);
+</script>
+</body>
+</html>

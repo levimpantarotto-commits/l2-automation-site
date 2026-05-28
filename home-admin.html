@@ -278,13 +278,13 @@ async function carregar() {
   document.getElementById('agentes-grid').innerHTML = jobs.map(j => {
     const ag = ags.find(a => a.nome === j.nome);
     const classe = !ag || !ag.ultimo_run ? 'idle' : (ag.erros_24h > 0 ? 'erro' : '');
-    return `<div class="agente-card">
+    return `<a class="agente-card" href="/admin/agente/${j.nome}" style="text-decoration:none;color:inherit;">
       <div class="agente-info">
         <span class="agente-nome">${j.nome}</span>
         <span class="agente-cron">${j.cron_expr}</span>
       </div>
       <span class="agente-status ${classe}" title="${ag?.status || 'aguardando'}"></span>
-    </div>`;
+    </a>`;
   }).join('');
 
   // Notificações
@@ -312,12 +312,12 @@ async function carregar() {
 
   const av = [];
   if (!nichos?.nichos?.length) {
-    av.push({ tipo: 'warning', html: '<strong>Sem ICP cadastrado.</strong> CNPJ Finder não busca empresas. <a href="/admin/comecar" style="color: var(--accent); text-decoration: underline;">Como começar →</a>' });
+    av.push({ tipo: 'warning', html: '<strong>Sem ICP cadastrado.</strong> CNPJ Finder não busca empresas. <a href="/admin/sobre">Sobre</a><a href="/admin/comecar" style="color: var(--accent); text-decoration: underline;">Como começar →</a>' });
   }
   // Heurística Gmail: se ja houve outbound e teve email enviado de verdade (não _dryrun)
   const outboundRuns = (runs?.runs || []).filter(r => r.agente === 'outbound_email' && r.status === 'sucesso');
   if (outboundRuns.length === 0) {
-    av.push({ tipo: 'warning', html: '<strong>Sem provedor de email configurado.</strong> Gmail SMTP precisa ser ligado pra envio real. <a href="/admin/comecar" style="color: var(--accent); text-decoration: underline;">Como ligar →</a>' });
+    av.push({ tipo: 'warning', html: '<strong>Sem provedor de email configurado.</strong> Gmail SMTP precisa ser ligado pra envio real. <a href="/admin/sobre">Sobre</a><a href="/admin/comecar" style="color: var(--accent); text-decoration: underline;">Como ligar →</a>' });
   }
   // Worker Claude Max: tem tarefas processadas?
   const concluidas = (ia?.stats || []).find(s => s.status === 'concluida')?.c || 0;
