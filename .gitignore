@@ -39,3 +39,8 @@ models/
 
 # Arquivos PowerShell helpers (não vão pro repo público)
 *.ps1.local
+
+# Dashboard React
+dashboard/node_modules/
+dashboard/dist/
+public/admin/

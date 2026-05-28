@@ -79,8 +79,16 @@ PASTAS_PUBLICAS.forEach(p => {
   if (fs.existsSync(dir)) app.use(`/${p}`, express.static(dir, { maxAge: '7d' }));
 });
 
-// Painel admin (uso interno, sem cache, ATRÁS DE BASIC AUTH)
-app.use('/admin', express.static(path.join(__dirname, 'admin'), { maxAge: 0 }));
+// Painel admin — dashboard React buildado pelo Vite (public/admin/)
+// Fallback: admin/index.html simples (legacy) caso dashboard não esteja buildado
+const adminBuilt = path.join(__dirname, 'public/admin');
+if (fs.existsSync(adminBuilt)) {
+  app.use('/admin', express.static(adminBuilt, { maxAge: 0 }));
+  // SPA: rotas internas do React (ex: /admin/kanban) devolvem index.html
+  app.get('/admin/*', (req, res) => res.sendFile(path.join(adminBuilt, 'index.html')));
+} else {
+  app.use('/admin', express.static(path.join(__dirname, 'admin'), { maxAge: 0 }));
+}
 
 // HTML/recursos da raiz (whitelist explícita)
 const ARQS_RAIZ = [
@@ -219,6 +227,57 @@ app.get('/api/failures', (req, res) => {
   `).all();
   res.json({ failures });
 });
+
+// ============================================================
+// STUBS — rotas que o dashboard LMP consome.
+// Retornam vazio/default pra não quebrar UI até implementação real.
+// ============================================================
+
+// Auth (dashboard LMP espera cookie HTTP-only; nossa auth é Basic via header
+// já tratada acima, então /auth/me retorna user fixo)
+app.get('/api/auth/me', (req, res) => {
+  res.json({ id: 1, username: 'admin', email: 'admin@l2automation.com.br', role: 'admin' });
+});
+app.post('/api/auth/login', (req, res) => res.json({ success: true, user: { username: 'admin' } }));
+app.post('/api/auth/logout', (req, res) => res.json({ success: true }));
+
+// Clientes (no L2 vamos usar multi-tenant futuro; por enquanto 1 fixo)
+app.get('/api/clientes', (req, res) => {
+  res.json([
+    { slug: 'l2-automation', nome: 'L2 Automation', ativo: 1 },
+  ]);
+});
+app.get('/api/clientes/:slug', (req, res) => {
+  res.json({ slug: req.params.slug, nome: 'L2 Automation', ativo: 1, dna: null });
+});
+
+// Posts/Roteiros/Calendário (stub vazio até implementar)
+app.get('/api/posts', (req, res) => res.json([]));
+app.get('/api/roteiros', (req, res) => res.json([]));
+app.get('/api/roteiros/:id', (req, res) => res.status(404).json({ error: 'não encontrado' }));
+app.get('/api/calendar', (req, res) => res.json([]));
+app.get('/api/analytics', (req, res) => res.json({ posts: 0, engajamento: 0, alcance: 0 }));
+app.get('/api/metrics-dashboard', (req, res) => res.json({ stats: {} }));
+app.get('/api/metrics/:postId', (req, res) => res.json({ likes: 0, comentarios: 0, alcance: 0 }));
+
+// Miner / Referências / YT trends (stub)
+app.get('/api/miner-report', (req, res) => res.json({}));
+app.get('/api/miner-last-log', (req, res) => res.json({ log: '(sem dados)' }));
+app.get('/api/referencias', (req, res) => res.json([]));
+
+// Usuários (admin)
+app.get('/api/auth/users', (req, res) => res.json([{ id: 1, username: 'admin', email: 'admin@l2automation.com.br', role: 'admin', ativo: 1 }]));
+
+// Notificações
+app.get('/api/notifications', (req, res) => res.json([]));
+app.get('/api/notificacoes', (req, res) => res.json([]));
+
+// Tráfego pago
+app.get('/api/trafego-pago', (req, res) => res.json([]));
+app.get('/api/midia-paga', (req, res) => res.json([]));
+
+// Aprovação pública (token)
+app.get('/api/aprovacao/:token', (req, res) => res.status(404).json({ error: 'token invalido' }));
 
 // ============================================================
 // MAESTRO (placeholder) — terminal interativo (futuro)

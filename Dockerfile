@@ -2,34 +2,36 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# better-sqlite3 precisa de build tools nativos (gyp + Python). Removidas após build pra imagem menor.
+# better-sqlite3 + node-gyp precisam de build tools nativos. Removidas após build.
 RUN apk add --no-cache --virtual .build-deps python3 make g++ \
     && ln -sf python3 /usr/bin/python
 
-# Instala deps
+# 1) Backend deps
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev --no-audit --no-fund
 
-# Copia código
+# 2) Dashboard React deps (inclui devDeps pq precisa do Vite pra build)
+COPY dashboard/package.json dashboard/package-lock.json* ./dashboard/
+RUN cd dashboard && npm install --include=dev --no-audit --no-fund
+
+# 3) Código todo
 COPY . .
 
-# Remove build deps
+# 4) Build dashboard → output em public/admin/
+RUN cd dashboard && npm run build && rm -rf node_modules
+
+# 5) Limpa build deps
 RUN apk del .build-deps
 
-# Volume persistente pro SQLite + logs
 RUN mkdir -p /data
 ENV DB_PATH=/data/l2.db
 ENV NODE_ENV=production
 ENV PORT=3004
-
-# Limita memória do Node pra ~512MB (VPS apertada)
 ENV NODE_OPTIONS="--max-old-space-size=448"
 
 EXPOSE 3004
-
 VOLUME ["/data"]
 
-# Healthcheck pro Coolify detectar app travado
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:3004/api/saude || exit 1
 
