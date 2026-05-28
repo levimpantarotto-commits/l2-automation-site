@@ -42,6 +42,34 @@ const app = express();
 app.use(express.json({ limit: '2mb' }));
 
 // ============================================================
+// BASIC AUTH — protege /admin e /api/* (exceto /api/saude pro Coolify)
+// User/senha vêm de env vars. Defaults inseguros pra dev local.
+// ============================================================
+const AUTH_USER = process.env.BASIC_AUTH_USER || 'admin';
+const AUTH_PASS = process.env.BASIC_AUTH_PASS || 'troqueme';
+
+function basicAuth(req, res, next) {
+  // /api/saude sempre aberto (Coolify healthcheck precisa)
+  if (req.path === '/api/saude') return next();
+  // Site marketing aberto (estáticos da raiz, /blog, etc)
+  if (!req.path.startsWith('/admin') && !req.path.startsWith('/api')) return next();
+
+  const auth = req.headers.authorization || '';
+  const [scheme, encoded] = auth.split(' ');
+  if (scheme !== 'Basic' || !encoded) {
+    res.set('WWW-Authenticate', 'Basic realm="L2 Admin"');
+    return res.status(401).send('Auth required');
+  }
+  const [u, p] = Buffer.from(encoded, 'base64').toString('utf-8').split(':');
+  if (u !== AUTH_USER || p !== AUTH_PASS) {
+    res.set('WWW-Authenticate', 'Basic realm="L2 Admin"');
+    return res.status(401).send('Credenciais inválidas');
+  }
+  next();
+}
+app.use(basicAuth);
+
+// ============================================================
 // ESTÁTICOS — serve site marketing + admin
 // Whitelist por segurança (não expõe server.js, .env, etc)
 // ============================================================
@@ -51,7 +79,7 @@ PASTAS_PUBLICAS.forEach(p => {
   if (fs.existsSync(dir)) app.use(`/${p}`, express.static(dir, { maxAge: '7d' }));
 });
 
-// Painel admin (uso interno, sem cache)
+// Painel admin (uso interno, sem cache, ATRÁS DE BASIC AUTH)
 app.use('/admin', express.static(path.join(__dirname, 'admin'), { maxAge: 0 }));
 
 // HTML/recursos da raiz (whitelist explícita)
