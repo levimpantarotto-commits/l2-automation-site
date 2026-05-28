@@ -106,6 +106,15 @@ app.get('/admin/inbox', (req, res) => res.sendFile(path.join(__dirname, 'inbox.h
 app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard-admin.html')));
 app.get('/admin/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads-admin.html')));
 app.get('/admin/config', (req, res) => res.sendFile(path.join(__dirname, 'config-admin.html')));
+app.get('/admin/posts', (req, res) => res.sendFile(path.join(__dirname, 'posts-admin.html')));
+app.get('/admin/roteiros', (req, res) => res.sendFile(path.join(__dirname, 'roteiros-admin.html')));
+app.get('/admin/ideias', (req, res) => res.sendFile(path.join(__dirname, 'ideias-admin.html')));
+app.get('/admin/ia', (req, res) => res.sendFile(path.join(__dirname, 'ia-admin.html')));
+app.get('/admin/escritorio.html', (req, res) => {
+  const built = path.join(__dirname, 'public/admin/escritorio.html');
+  if (fs.existsSync(built)) return res.sendFile(built);
+  res.sendFile(path.join(__dirname, 'dashboard/public/escritorio.html'));
+});
 
 // Painel React antigo fica em /admin/painel-antigo/ (não é mais a home)
 const adminBuilt = path.join(__dirname, 'public/admin');
@@ -123,6 +132,7 @@ const ARQS_RAIZ = [
   'index.html', 'avatares-teste.html', 'escritorio-3d-teste.html', 'escritorioteste.html',
   'sitemap.xml', 'robots.txt', 'logo.svg', 'inbox.html',
   'dashboard-admin.html', 'leads-admin.html', 'config-admin.html', 'home-admin.html',
+  'posts-admin.html', 'roteiros-admin.html', 'ideias-admin.html', 'ia-admin.html',
 ];
 ARQS_RAIZ.forEach(arq => {
   const file = path.join(__dirname, arq);
@@ -303,10 +313,12 @@ app.get('/api/clientes/:slug', (req, res) => {
   });
 });
 
-// Posts/Roteiros/Calendário (stub vazio até implementar)
-app.get('/api/posts', (req, res) => res.json([]));
-app.get('/api/roteiros', (req, res) => res.json([]));
-app.get('/api/roteiros/:id', (req, res) => res.status(404).json({ error: 'não encontrado' }));
+// Calendar (stub)
+app.get('/api/roteiros/:id', (req, res) => {
+  const r = db.prepare('SELECT * FROM roteiros WHERE id = ?').get(req.params.id);
+  if (!r) return res.status(404).json({ error: 'nao encontrado' });
+  res.json(r);
+});
 app.get('/api/calendar', (req, res) => res.json([]));
 app.get('/api/analytics', (req, res) => res.json({ posts: 0, engajamento: 0, alcance: 0 }));
 app.get('/api/metrics-dashboard', (req, res) => res.json({ stats: {} }));
@@ -708,6 +720,154 @@ app.get('/api/followups', (req, res) => {
       ORDER BY f.agendado_para ASC LIMIT 200
     `).all(status),
   });
+});
+
+// ============================================================
+// CLAUDE MAX BRIDGE — fila de tarefas pro worker local processar
+// Worker (scripts/worker-claude.js) roda na máquina do Levi com Claude Code,
+// pesca tarefa pendente, processa, devolve resultado.
+// ============================================================
+
+// Workers buscam próximas tarefas pendentes (pega lock atomico)
+app.get('/api/ia/proxima', (req, res) => {
+  const workerId = req.query.worker_id || 'unknown';
+  const tipos = req.query.tipos ? req.query.tipos.split(',') : null;
+
+  // Atomic SELECT + UPDATE — pega 1 tarefa pendente e marca processando
+  const candidato = tipos
+    ? db.prepare(`SELECT * FROM tarefas_ia WHERE status = 'pendente' AND tipo IN (${tipos.map(() => '?').join(',')})
+                  ORDER BY prioridade ASC, created_at ASC LIMIT 1`).get(...tipos)
+    : db.prepare(`SELECT * FROM tarefas_ia WHERE status = 'pendente'
+                  ORDER BY prioridade ASC, created_at ASC LIMIT 1`).get();
+
+  if (!candidato) return res.json({ tarefa: null });
+
+  db.prepare(`
+    UPDATE tarefas_ia SET status='processando', worker_id=?, pego_em=CURRENT_TIMESTAMP
+    WHERE id = ? AND status='pendente'
+  `).run(workerId, candidato.id);
+
+  res.json({ tarefa: candidato });
+});
+
+// Worker devolve resultado
+app.post('/api/ia/:id/concluir', (req, res) => {
+  const { resultado, tokens_usados, duracao_ms } = req.body || {};
+  if (!resultado) return res.status(400).json({ error: 'resultado obrigatorio' });
+
+  const tarefa = db.prepare('SELECT * FROM tarefas_ia WHERE id = ?').get(req.params.id);
+  if (!tarefa) return res.status(404).json({ error: 'tarefa nao encontrada' });
+
+  db.prepare(`
+    UPDATE tarefas_ia SET
+      status='concluida', resultado=?, tokens_usados=?, duracao_ms=?,
+      concluido_em=CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(resultado, tokens_usados || null, duracao_ms || null, req.params.id);
+
+  // Dispara callback agente se configurado
+  if (tarefa.callback_agente) {
+    const agentFile = path.join(__dirname, 'agents', `${tarefa.callback_agente}.js`);
+    if (fs.existsSync(agentFile)) {
+      try {
+        const AgenteImpl = require(agentFile);
+        const instance = new AgenteImpl(db);
+        const payload = { tarefa_id: tarefa.id, resultado, ...JSON.parse(tarefa.callback_payload || '{}') };
+        instance.run(payload, 'ia_callback').catch(e => console.error(`[ia_callback ${tarefa.callback_agente}]`, e.message));
+      } catch (e) {
+        console.error('[ia_callback]', e.message);
+      }
+    }
+  }
+
+  res.json({ success: true });
+});
+
+app.post('/api/ia/:id/falhar', (req, res) => {
+  const { erro } = req.body || {};
+  db.prepare(`
+    UPDATE tarefas_ia SET status='falhou', erro=?, concluido_em=CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).run(erro || 'erro nao informado', req.params.id);
+  res.json({ success: true });
+});
+
+// Lista tarefas (UI)
+app.get('/api/ia', (req, res) => {
+  const status = req.query.status;
+  const sql = status
+    ? `SELECT * FROM tarefas_ia WHERE status = ? ORDER BY created_at DESC LIMIT 100`
+    : `SELECT * FROM tarefas_ia ORDER BY created_at DESC LIMIT 100`;
+  const tarefas = status ? db.prepare(sql).all(status) : db.prepare(sql).all();
+
+  // Stats
+  const stats = db.prepare(`
+    SELECT status, COUNT(*) AS c FROM tarefas_ia GROUP BY status
+  `).all();
+
+  res.json({ tarefas, stats });
+});
+
+// Admin pode criar tarefa manual (pra testar)
+app.post('/api/ia', (req, res) => {
+  const { tipo, prompt, contexto, prioridade, callback_agente, callback_payload } = req.body || {};
+  if (!tipo || !prompt) return res.status(400).json({ error: 'tipo e prompt obrigatorios' });
+
+  const r = db.prepare(`
+    INSERT INTO tarefas_ia (tipo, prompt, contexto, prioridade, agente_origem, callback_agente, callback_payload, expires_at)
+    VALUES (?, ?, ?, ?, 'admin_manual', ?, ?, datetime('now', '+24 hours'))
+  `).run(
+    tipo, prompt,
+    contexto ? JSON.stringify(contexto) : null,
+    prioridade || 5,
+    callback_agente || null,
+    callback_payload ? JSON.stringify(callback_payload) : null,
+  );
+
+  res.json({ success: true, id: r.lastInsertRowid });
+});
+
+// ============================================================
+// POSTS / ROTEIROS / IDEIAS — endpoints de leitura
+// ============================================================
+app.get('/api/posts', (req, res) => {
+  const status = req.query.status;
+  const sql = status
+    ? `SELECT * FROM posts WHERE status = ? ORDER BY created_at DESC LIMIT 100`
+    : `SELECT * FROM posts ORDER BY created_at DESC LIMIT 100`;
+  res.json({ posts: status ? db.prepare(sql).all(status) : db.prepare(sql).all() });
+});
+
+app.post('/api/posts/:id/aprovar', (req, res) => {
+  db.prepare(`UPDATE posts SET status='aprovado', updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(req.params.id);
+  res.json({ success: true });
+});
+
+app.post('/api/posts/:id/rejeitar', (req, res) => {
+  db.prepare(`UPDATE posts SET status='rejeitado', updated_at=CURRENT_TIMESTAMP WHERE id=?`).run(req.params.id);
+  res.json({ success: true });
+});
+
+app.get('/api/roteiros', (req, res) => {
+  res.json({ roteiros: db.prepare(`SELECT * FROM roteiros ORDER BY created_at DESC LIMIT 100`).all() });
+});
+
+app.get('/api/ideias', (req, res) => {
+  const status = req.query.status;
+  const sql = status
+    ? `SELECT * FROM ideias WHERE status = ? ORDER BY created_at DESC LIMIT 200`
+    : `SELECT * FROM ideias ORDER BY created_at DESC LIMIT 200`;
+  res.json({ ideias: status ? db.prepare(sql).all(status) : db.prepare(sql).all() });
+});
+
+app.post('/api/ideias', (req, res) => {
+  const { titulo, descricao, fonte, conteudo_raw, tags } = req.body || {};
+  if (!titulo) return res.status(400).json({ error: 'titulo obrigatorio' });
+  const r = db.prepare(`
+    INSERT INTO ideias (titulo, descricao, fonte, conteudo_raw, tags)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(titulo, descricao || null, fonte || 'manual', conteudo_raw || null, tags ? JSON.stringify(tags) : null);
+  res.json({ success: true, id: r.lastInsertRowid });
 });
 
 // ============================================================

@@ -6,13 +6,11 @@
 
 const AgenteBase = require('./base');
 const Copywriter = require('./copywriter');
+const emailSender = require('./email_sender');
 const {
   checarRateLimit, consumirRateLimit, cancelarFollowupsPendentes, temOptOut,
 } = require('./utils');
 
-const RESEND_API = 'https://api.resend.com/emails';
-const FROM_EMAIL = process.env.OUTBOUND_FROM_EMAIL || 'levi@l2automation.com.br';
-const FROM_NAME = process.env.OUTBOUND_FROM_NAME || 'Levi · L2 Automation';
 const CONFIANCA_MINIMA = 0.6;
 
 class SdrNeural extends AgenteBase {
@@ -151,23 +149,12 @@ class SdrNeural extends AgenteBase {
   }
 
   async _enviar(lead, copy, canal) {
-    if (canal !== 'email' || !process.env.RESEND_API_KEY) return false;
+    if (canal !== 'email') return false;
     try {
-      const res = await fetch(RESEND_API, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: `${FROM_NAME} <${FROM_EMAIL}>`,
-          to: [lead.email],
-          subject: copy.assunto,
-          text: copy.corpo,
-          headers: { 'X-Lead-Id': String(lead.id) },
-        }),
+      const r = await emailSender.enviar({
+        to: lead.email, subject: copy.assunto, text: copy.corpo, leadId: lead.id,
       });
-      return res.ok;
+      return r.enviado;
     } catch {
       return false;
     }

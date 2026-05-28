@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><title>L2 · Roteiros</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-deep:#8B6F1F;--text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88;--warn:#ffb800;--err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+    padding: 24px 28px; margin-bottom: 16px; border-left: 3px solid var(--accent); }
+  .meta { display: flex; gap: 14px; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; }
+  h2.tit { font-weight: 800; font-size: 1.2rem; margin: 10px 0 16px; letter-spacing: -0.015em; }
+  .gancho { background: var(--surface-2); padding: 14px 18px; border-radius: 4px; border-left: 3px solid var(--warn);
+    margin: 10px 0; font-size: 14px; color: var(--text); }
+  .gancho::before { content: 'GANCHO · '; color: var(--warn); font-size: 9px; letter-spacing: 0.25em; font-weight: 700; }
+  .cena { background: var(--surface-2); padding: 10px 16px; border-radius: 4px; margin: 6px 0; font-size: 12px; }
+  .cena-meta { font-size: 9px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+  .cta { background: rgba(230,190,72,0.08); border: 1px solid var(--border); padding: 12px 18px; border-radius: 4px; margin-top: 14px; font-size: 13px; }
+  .cta::before { content: 'CTA · '; color: var(--accent); font-size: 9px; letter-spacing: 0.25em; font-weight: 700; }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .empty { text-align: center; padding: 80px 20px; color: var(--text-3); font-size: 1rem; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Roteiros</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">Reels · Shorts · YouTube · TikTok</p></div>
+  <span class="badge" id="contador">— roteiros</span>
+</header>
+<nav class="top">
+  <a href="/admin/">Home</a><a href="/admin/inbox">Inbox</a><a href="/admin/leads">Leads</a>
+  <a href="/admin/dashboard">Dashboard</a><a href="/admin/posts">Posts</a>
+  <a href="/admin/roteiros" class="active">Roteiros</a><a href="/admin/ideias">Ideias</a>
+  <a href="/admin/ia">Fila IA</a><a href="/admin/config" style="margin-left: auto;">Config</a>
+</nav>
+
+<main id="lista"></main>
+
+<script>
+async function carregar() {
+  const r = await fetch('/api/roteiros');
+  const data = await r.json();
+  const roteiros = data.roteiros || [];
+  document.getElementById('contador').textContent = `${roteiros.length} roteiros`;
+  document.getElementById('lista').innerHTML = roteiros.length === 0
+    ? '<div class="empty">Sem roteiros ainda. Cadastre ideias em <a href="/admin/ideias" style="color: var(--accent)">/admin/ideias</a> e rode o worker Claude Max local.</div>'
+    : roteiros.map(r => {
+      let estr = []; try { estr = JSON.parse(r.estrutura || '[]'); } catch {}
+      return `<div class="card">
+        <div class="meta">
+          <span>Rede: <strong style="color: var(--accent)">${r.rede}</strong></span>
+          <span>Duração: <strong>${r.duracao_estimada_s || '—'}s</strong></span>
+          <span>Framework: <strong>${r.framework_usado || '—'}</strong></span>
+          <span style="margin-left: auto;">${new Date(r.created_at).toLocaleString('pt-BR')}</span>
+        </div>
+        <h2 class="tit">${r.titulo || '—'}</h2>
+        ${r.gancho ? `<div class="gancho">${r.gancho}</div>` : ''}
+        ${estr.length ? `<div style="margin-top: 14px;">${estr.map(c => `
+          <div class="cena">
+            <div class="cena-meta">Cena ${c.cena} · ${c.tempo_s}</div>
+            ${c.visual ? `<div style="color: var(--text-3); font-style: italic; margin-bottom: 4px; font-size: 11px;">[${c.visual}]</div>` : ''}
+            ${c.narracao || ''}
+          </div>
+        `).join('')}</div>` : ''}
+        ${r.cta ? `<div class="cta">${r.cta}</div>` : ''}
+        ${r.thumbnail_sugestao ? `<div style="font-size: 11px; color: var(--text-3); margin-top: 10px; letter-spacing: 0.05em;"><strong>Thumb:</strong> ${r.thumbnail_sugestao}</div>` : ''}
+      </div>`;
+    }).join('');
+}
+
+carregar();
+setInterval(carregar, 20000);
+</script>
+</body>
+</html>

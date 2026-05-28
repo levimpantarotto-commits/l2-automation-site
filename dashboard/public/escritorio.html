@@ -2010,6 +2010,128 @@ setTimeout(() => {
 }, 600);
 
 animate();
+
+// ============================================================
+// LIGAR ESCRITÓRIO 3D AOS DADOS REAIS DO L2 (substitui mock)
+// ============================================================
+const L2_API_BASE = (location.hostname === 'localhost' || location.hostname.startsWith('127.'))
+  ? 'http://localhost:3004'
+  : 'https://app.l2automation.com.br';
+
+// Mapeamento: avatar 3D -> agrupamento de agentes reais
+const MAPA_AGENTES = {
+  sdr: { agentes: ['sdr_neural'], label: 'SDR Neural', role: '01 · Follow-up automático' },
+  bi: { agentes: ['analytics'], label: 'Analytics', role: '02 · BI tempo real' },
+  trafego: { agentes: ['cnpj_finder', 'prospector', 'enricher'], label: 'Captação', role: '03 · CNPJ + Enrichment' },
+  clevel: { agentes: ['self_debugger', 'janitor', 'backup'], label: 'Self-Healing', role: '04 · Auto-correção' },
+  osia: { agentes: ['maestro'], label: 'OSIA / Maestro', role: 'Orquestrador central' },
+};
+
+async function fetchDadosReais() {
+  try {
+    const [ag, fun, runsR] = await Promise.all([
+      fetch(`${L2_API_BASE}/api/agentes/status`, { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+      fetch(`${L2_API_BASE}/api/analytics/funil`, { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+      fetch(`${L2_API_BASE}/api/runs?limit=50`, { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+    ]);
+    return { agentes: ag?.agentes || [], funil: fun || {}, runs: runsR?.runs || [] };
+  } catch (e) {
+    console.warn('[escritorio] api L2 indisponivel — usando mock:', e.message);
+    return null;
+  }
+}
+
+function formatarAcao(ag, todosAgentes, runs) {
+  const ags = ag.agentes.map(n => todosAgentes.find(a => a.nome === n)).filter(Boolean);
+  if (ags.length === 0) return 'Aguardando sistema iniciar';
+  const totalRuns24h = ags.reduce((s, a) => s + (a.runs_24h || 0), 0);
+  const ativos = ags.filter(a => a.status === 'rodando' || a.status === 'recente').length;
+  if (totalRuns24h === 0) return `${ag.label} idle (nenhuma execução nas últimas 24h)`;
+  if (ativos > 0) return `${ag.label} ativo · ${totalRuns24h} runs nas últimas 24h`;
+  return `${ag.label} aguardando próximo ciclo`;
+}
+
+function montarStats(ag, todosAgentes, funil) {
+  const ags = ag.agentes.map(n => todosAgentes.find(a => a.nome === n)).filter(Boolean);
+  if (ag.label === 'SDR Neural') {
+    return [
+      { k: 'Leads contatados', v: String(funil.contatados || 0) },
+      { k: 'Respondidos', v: String(funil.respondidos || 0) },
+      { k: 'Taxa resposta', v: String(funil.taxa_resposta_pct || 0), s: '%' },
+      { k: 'Runs 24h', v: String(ags.reduce((s, a) => s + (a.runs_24h || 0), 0)) },
+    ];
+  }
+  if (ag.label === 'Analytics') {
+    return [
+      { k: 'Total leads', v: String(funil.total || 0) },
+      { k: 'Por status', v: String((funil.por_status || []).length) },
+      { k: 'Por nicho', v: String((funil.por_nicho || []).length) },
+      { k: 'Runs 24h', v: String(ags.reduce((s, a) => s + (a.runs_24h || 0), 0)) },
+    ];
+  }
+  if (ag.label === 'Captação') {
+    return [
+      { k: 'Leads totais', v: String(funil.total || 0) },
+      { k: 'CNPJ Finder runs', v: String(todosAgentes.find(a => a.nome === 'cnpj_finder')?.runs_24h || 0) },
+      { k: 'Enricher runs', v: String(todosAgentes.find(a => a.nome === 'enricher')?.runs_24h || 0) },
+      { k: 'Prospector runs', v: String(todosAgentes.find(a => a.nome === 'prospector')?.runs_24h || 0) },
+    ];
+  }
+  if (ag.label === 'Self-Healing') {
+    return [
+      { k: 'Self-debug runs', v: String(todosAgentes.find(a => a.nome === 'self_debugger')?.runs_24h || 0) },
+      { k: 'Janitor runs', v: String(todosAgentes.find(a => a.nome === 'janitor')?.runs_24h || 0) },
+      { k: 'Backups OK', v: String(todosAgentes.find(a => a.nome === 'backup')?.runs_24h || 0) },
+      { k: 'Erros 24h', v: String(ags.reduce((s, a) => s + (a.erros_24h || 0), 0)) },
+    ];
+  }
+  // OSIA / Maestro
+  const m = todosAgentes.find(a => a.nome === 'maestro');
+  return [
+    { k: 'Maestro runs', v: String(m?.runs_24h || 0) },
+    { k: 'Agentes ativos', v: String(todosAgentes.length) },
+    { k: 'Erros 24h', v: String(todosAgentes.reduce((s, a) => s + (a.erros_24h || 0), 0)) },
+    { k: 'Uptime', v: m?.ultimo_run ? 'OK' : '—' },
+  ];
+}
+
+function montarLog(ag, runs) {
+  const nomes = ag.agentes;
+  const runsAg = runs.filter(r => nomes.includes(r.agente)).slice(0, 6);
+  if (runsAg.length === 0) return [{ ts: 'agora', text: 'Aguardando primeira execução', now: true }];
+  return runsAg.map((r, i) => {
+    const dt = r.inicio ? new Date(r.inicio.replace(' ', 'T') + 'Z') : null;
+    const mins = dt ? Math.max(0, Math.floor((Date.now() - dt.getTime()) / 60000)) : 0;
+    const ts = i === 0 ? 'agora' : mins < 60 ? `${mins}min` : `${Math.floor(mins/60)}h`;
+    const statusTxt = r.status === 'sucesso' ? '✓' : r.status === 'erro' ? '✗' : '⋯';
+    return {
+      ts,
+      text: `[${r.agente}] ${statusTxt} ${r.modo} · ${r.duracao_ms || '—'}ms`,
+      now: i === 0,
+    };
+  });
+}
+
+async function atualizarDadosReais() {
+  const dados = await fetchDadosReais();
+  if (!dados) return;
+  const { agentes, funil, runs } = dados;
+
+  for (const key of Object.keys(MAPA_AGENTES)) {
+    const map = MAPA_AGENTES[key];
+    if (!AGENT_DATA[key]) continue;
+    AGENT_DATA[key].name = map.label;
+    AGENT_DATA[key].role = map.role;
+    AGENT_DATA[key].action = formatarAcao(map, agentes, runs);
+    AGENT_DATA[key].stats = montarStats(map, agentes, funil);
+    AGENT_DATA[key].log = montarLog(map, runs);
+  }
+  console.log('[escritorio] dados reais aplicados');
+}
+
+// Roda agora e a cada 30s
+atualizarDadosReais();
+setInterval(atualizarDadosReais, 30000);
 </script>
 </body>
 </html>

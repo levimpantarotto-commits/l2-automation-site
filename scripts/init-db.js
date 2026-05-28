@@ -158,6 +158,27 @@ const AGENTES_BASE = [
     cron_expr: '0 4 * * *', // 4h da manha
     cron_ativo: 1,
   },
+  {
+    nome: 'post_generator',
+    label: 'Post Generator',
+    descricao: 'Gera posts LinkedIn/Instagram com base em ideias + Cerebro de Persuasao. Usa Claude Max local.',
+    cron_expr: '0 8 * * 1-5', // 8h dia util
+    cron_ativo: 1,
+  },
+  {
+    nome: 'video_prototyper',
+    label: 'Video Prototyper',
+    descricao: 'Gera roteiros pra Reels/Shorts/YouTube. Sem gerar video (precisa Runway/Sora pago).',
+    cron_expr: '0 9 * * 1,3,5', // seg/qua/sex 9h
+    cron_ativo: 1,
+  },
+  {
+    nome: 'drive_sync',
+    label: 'Drive Sync',
+    descricao: 'Resume transcricoes do Google Drive em ideias acionaveis. Precisa drive-puller.js local rodando.',
+    cron_expr: '*/30 * * * *', // 30min — pega ideias sem resumo
+    cron_ativo: 1,
+  },
 ];
 
 function seed(db) {

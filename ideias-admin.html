@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><title>L2 · Ideias</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-deep:#8B6F1F;--text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88;--warn:#ffb800;--err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+  .add { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; padding: 22px; margin-bottom: 24px; }
+  .add input, .add textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 14px; border-radius: 4px; font-family: inherit; font-size: 13px; outline: none; margin-bottom: 10px; }
+  .add input:focus, .add textarea:focus { border-color: var(--accent); }
+  .add textarea { min-height: 80px; resize: vertical; }
+  button { background: var(--surface-2); color: var(--accent); border: 1px solid var(--accent); padding: 10px 22px;
+    border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 0.15em;
+    text-transform: uppercase; font-weight: 700; }
+  button:hover { background: rgba(230,190,72,0.1); }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+    padding: 20px 24px; margin-bottom: 12px; border-left: 3px solid var(--accent); }
+  .meta { display: flex; gap: 14px; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; margin-bottom: 8px; }
+  .resumo { background: var(--surface-2); padding: 14px; border-radius: 4px; font-size: 12px; color: var(--text-2); margin-top: 10px; line-height: 1.6; }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .empty { text-align: center; padding: 60px 20px; color: var(--text-3); font-size: 1rem; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Banco de ideias</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">Manual + Drive + Cérebro</p></div>
+  <span class="badge" id="contador">— ideias</span>
+</header>
+<nav class="top">
+  <a href="/admin/">Home</a><a href="/admin/inbox">Inbox</a><a href="/admin/leads">Leads</a>
+  <a href="/admin/dashboard">Dashboard</a><a href="/admin/posts">Posts</a>
+  <a href="/admin/roteiros">Roteiros</a><a href="/admin/ideias" class="active">Ideias</a>
+  <a href="/admin/ia">Fila IA</a><a href="/admin/config" style="margin-left: auto;">Config</a>
+</nav>
+
+<div class="add">
+  <h3 style="font-size: 11px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 12px; font-weight: 700;">+ Adicionar ideia manual</h3>
+  <input id="titulo" placeholder="Título (assunto principal)" />
+  <textarea id="desc" placeholder="Descrição / contexto / transcrição completa"></textarea>
+  <input id="tags" placeholder="Tags (vírgula): vendas, b2b, social-proof" />
+  <button onclick="adicionar()">Adicionar à fila</button>
+</div>
+
+<main id="lista"></main>
+
+<script>
+async function carregar() {
+  const r = await fetch('/api/ideias');
+  const data = await r.json();
+  const ideias = data.ideias || [];
+  document.getElementById('contador').textContent = `${ideias.length} ideias`;
+  document.getElementById('lista').innerHTML = ideias.length === 0
+    ? '<div class="empty">Sem ideias ainda. Adicione manualmente acima ou rode <code>node scripts/drive-puller.js</code> local pra puxar do Drive.</div>'
+    : ideias.map(i => {
+      let tags = []; try { tags = JSON.parse(i.tags || '[]'); } catch {}
+      return `<div class="card">
+        <div class="meta">
+          <span>Fonte: <strong style="color: var(--accent)">${i.fonte || '—'}</strong></span>
+          <span>Status: <strong style="color: var(--accent)">${i.status}</strong></span>
+          ${tags.length ? `<span>${tags.map(t => '#' + t).join(' ')}</span>` : ''}
+          <span style="margin-left: auto;">${new Date(i.created_at).toLocaleString('pt-BR')}</span>
+        </div>
+        <strong style="font-size: 14px;">${i.titulo}</strong>
+        ${i.descricao ? `<p style="color: var(--text-2); font-size: 12px; margin-top: 6px;">${i.descricao}</p>` : ''}
+        ${i.resumo ? `<div class="resumo">${i.resumo}</div>` : i.conteudo_raw ? `<div class="resumo" style="opacity:0.7">⏳ Aguardando resumo via Claude Max...</div>` : ''}
+      </div>`;
+    }).join('');
+}
+
+async function adicionar() {
+  const titulo = document.getElementById('titulo').value;
+  const descricao = document.getElementById('desc').value;
+  const tags = document.getElementById('tags').value.split(',').map(t => t.trim()).filter(Boolean);
+  if (!titulo) return alert('Título obrigatório');
+  const r = await fetch('/api/ideias', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ titulo, descricao, fonte: 'manual', tags, conteudo_raw: descricao.length > 200 ? descricao : null }),
+  });
+  if (r.ok) {
+    ['titulo','desc','tags'].forEach(id => document.getElementById(id).value = '');
+    carregar();
+  }
+}
+
+carregar();
+setInterval(carregar, 30000);
+</script>
+</body>
+</html>

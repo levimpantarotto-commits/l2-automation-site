@@ -318,6 +318,99 @@ CREATE INDEX IF NOT EXISTS idx_opt_outs_email ON opt_outs(email);
 CREATE INDEX IF NOT EXISTS idx_opt_outs_cnpj ON opt_outs(cnpj);
 
 -- ============================================================
+-- TAREFAS_IA — fila pro Claude Max local processar
+-- Backend cria tarefa; worker local (scripts/worker-claude.js) busca,
+-- processa via Claude Code, devolve resultado.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tarefas_ia (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tipo TEXT NOT NULL,                -- 'copy_email' | 'post_linkedin' | 'post_instagram' | 'roteiro_video' | 'resumo_reuniao'
+  prompt TEXT NOT NULL,              -- prompt completo enviado ao Claude
+  contexto TEXT,                     -- JSON com dados auxiliares (lead, persona, transcrição, etc)
+  agente_origem TEXT,                -- quem criou a tarefa
+  prioridade INTEGER DEFAULT 5,      -- 1 (urgente) - 10 (baixa)
+  status TEXT DEFAULT 'pendente',    -- pendente | processando | concluida | falhou | expirada
+  resultado TEXT,                    -- resposta do Claude
+  tokens_usados INTEGER,
+  duracao_ms INTEGER,
+  erro TEXT,
+  worker_id TEXT,                    -- identifica qual worker pegou
+  pego_em TIMESTAMP,
+  concluido_em TIMESTAMP,
+  expires_at TIMESTAMP,              -- após 24h vira 'expirada'
+  callback_agente TEXT,              -- qual agente processa o resultado depois
+  callback_payload TEXT,             -- JSON com extra info pro callback
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_tarefas_pendentes ON tarefas_ia(status, prioridade, created_at);
+
+-- ============================================================
+-- POSTS — conteúdo gerado pra LinkedIn / Instagram / X
+-- ============================================================
+CREATE TABLE IF NOT EXISTS posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  rede TEXT NOT NULL,                -- 'linkedin' | 'instagram' | 'x' | 'tiktok'
+  tipo TEXT NOT NULL,                -- 'feed' | 'carrossel' | 'reels' | 'stories'
+  titulo TEXT,
+  conteudo TEXT NOT NULL,
+  hashtags TEXT,                     -- JSON array
+  cta TEXT,
+  imagens TEXT,                      -- JSON array de URLs/paths
+  ideia_origem_id INTEGER,           -- de qual ideia veio
+  agente_origem TEXT,
+  framework_usado TEXT,              -- de qual livro do Cerebro
+  confianca REAL,
+  status TEXT DEFAULT 'rascunho',    -- rascunho | pendente_aprovacao | aprovado | publicado | rejeitado
+  publicado_em TIMESTAMP,
+  metricas TEXT,                     -- JSON: likes, comentarios, alcance
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status, created_at DESC);
+
+-- ============================================================
+-- ROTEIROS — vídeos YouTube / Reels / Shorts
+-- ============================================================
+CREATE TABLE IF NOT EXISTS roteiros (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  titulo TEXT NOT NULL,
+  rede TEXT,                         -- 'youtube' | 'reels' | 'shorts' | 'tiktok'
+  duracao_estimada_s INTEGER,
+  gancho TEXT,                       -- abertura (primeiros 3s)
+  estrutura TEXT,                    -- JSON com cenas/blocos
+  roteiro_completo TEXT,             -- texto narrado completo
+  cta TEXT,
+  ideia_origem_id INTEGER,
+  agente_origem TEXT,
+  framework_usado TEXT,
+  status TEXT DEFAULT 'rascunho',    -- rascunho | aprovado | gravado | publicado
+  thumbnail_sugestao TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- IDEIAS — banco de ideias (vem do Drive, do cérebro, manual)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS ideias (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  titulo TEXT NOT NULL,
+  descricao TEXT,
+  fonte TEXT,                        -- 'drive_transcricao' | 'manual' | 'cerebro' | 'tendencia'
+  fonte_id TEXT,                     -- id externo (ex: file_id do Drive)
+  conteudo_raw TEXT,                 -- transcrição completa
+  resumo TEXT,                       -- resumo executivo gerado por IA
+  tags TEXT,                         -- JSON array
+  status TEXT DEFAULT 'nova',        -- nova | em_uso | usada | descartada
+  usado_em_posts TEXT,               -- JSON array de post_ids
+  usado_em_roteiros TEXT,            -- JSON array de roteiro_ids
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ideias_status ON ideias(status, created_at DESC);
+
+-- ============================================================
 -- BACKUPS_LOG — histórico de backups do SQLite
 -- ============================================================
 CREATE TABLE IF NOT EXISTS backups_log (

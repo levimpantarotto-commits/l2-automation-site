@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>L2 · Posts</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-deep:#8B6F1F;--text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88;--warn:#ffb800;--err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+  .filtros { display: flex; gap: 8px; margin-bottom: 24px; }
+  .filtros button { background: var(--surface-1); color: var(--text-3); border: 1px solid var(--border);
+    padding: 8px 16px; border-radius: 4px; font-family: inherit; font-size: 11px;
+    letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; font-weight: 700; }
+  .filtros button.active { color: var(--accent); border-color: var(--accent); background: rgba(230,190,72,0.05); }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+    padding: 22px 28px; margin-bottom: 14px; border-left: 3px solid var(--accent); }
+  .card-head { display: flex; justify-content: space-between; margin-bottom: 12px; }
+  .meta { display: flex; gap: 14px; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; }
+  .meta strong { color: var(--accent); }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .pill-pendente { background: rgba(255,184,0,0.15); color: var(--warn); }
+  .pill-aprovado { background: rgba(0,255,136,0.15); color: var(--success); }
+  .pill-publicado { background: rgba(230,190,72,0.15); color: var(--accent); }
+  .pill-rejeitado { background: rgba(255,51,102,0.10); color: var(--err); }
+  .pill-rascunho { background: rgba(255,255,255,0.08); color: var(--text-2); }
+  .conteudo { background: var(--surface-2); padding: 16px; border-radius: 4px; white-space: pre-wrap;
+    font-size: 13px; line-height: 1.6; color: var(--text-2); margin: 12px 0; }
+  .hashtags { font-size: 12px; color: var(--accent-deep); margin-top: 8px; letter-spacing: 0.05em; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; }
+  button.act { background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 18px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; }
+  button.act:hover { border-color: var(--accent); color: var(--accent); }
+  button.act.success { border-color: var(--success); color: var(--success); }
+  button.act.danger { border-color: var(--err); color: var(--err); }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; }
+  .empty { text-align: center; padding: 80px 20px; color: var(--text-3); font-size: 1rem; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Posts gerados</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">LinkedIn · Instagram · X</p></div>
+  <span class="badge" id="contador">— posts</span>
+</header>
+<nav class="top">
+  <a href="/admin/">Home</a>
+  <a href="/admin/inbox">Inbox</a>
+  <a href="/admin/leads">Leads</a>
+  <a href="/admin/dashboard">Dashboard</a>
+  <a href="/admin/posts" class="active">Posts</a>
+  <a href="/admin/roteiros">Roteiros</a>
+  <a href="/admin/ideias">Ideias</a>
+  <a href="/admin/ia">Fila IA</a>
+  <a href="/admin/config" style="margin-left: auto;">Config</a>
+</nav>
+
+<div class="filtros" id="filtros"></div>
+<main id="lista"></main>
+
+<script>
+let statusAtual = 'pendente_aprovacao';
+const STATUSES = ['pendente_aprovacao','aprovado','publicado','rejeitado','rascunho'];
+
+function renderFiltros() {
+  document.getElementById('filtros').innerHTML = STATUSES.map(s =>
+    `<button class="${s === statusAtual ? 'active' : ''}" onclick="setStatus('${s}')">${s.replace('_', ' ')}</button>`
+  ).join('');
+}
+
+window.setStatus = (s) => { statusAtual = s; renderFiltros(); carregar(); };
+
+async function carregar() {
+  const r = await fetch('/api/posts?status=' + statusAtual);
+  const data = await r.json();
+  const posts = data.posts || [];
+  document.getElementById('contador').textContent = `${posts.length} posts`;
+  document.getElementById('lista').innerHTML = posts.length === 0
+    ? '<div class="empty">Nada em <strong>' + statusAtual.replace('_', ' ') + '</strong>. Rode <code>node scripts/worker-claude.js</code> local pra processar a fila de IA.</div>'
+    : posts.map(p => {
+        let tags = []; try { tags = JSON.parse(p.hashtags || '[]'); } catch {}
+        return `<div class="card">
+          <div class="card-head">
+            <div class="meta">
+              <span>Rede: <strong>${p.rede}</strong></span>
+              <span>Tipo: <strong>${p.tipo}</strong></span>
+              ${p.framework_usado ? `<span>Framework: <strong>${p.framework_usado}</strong></span>` : ''}
+              <span class="pill pill-${p.status}">${(p.status || '').replace('_', ' ')}</span>
+            </div>
+            <span style="font-size: 10px; color: var(--text-3); letter-spacing: 0.1em;">${new Date(p.created_at).toLocaleString('pt-BR')}</span>
+          </div>
+          ${p.titulo ? `<strong style="font-size: 14px; display: block; margin-bottom: 8px;">${p.titulo}</strong>` : ''}
+          <div class="conteudo">${p.conteudo}</div>
+          ${tags.length ? `<div class="hashtags">${tags.join(' ')}</div>` : ''}
+          ${p.cta ? `<div style="margin-top: 8px; font-size: 12px; color: var(--accent);"><strong>CTA:</strong> ${p.cta}</div>` : ''}
+          ${statusAtual === 'pendente_aprovacao' ? `
+            <div class="actions">
+              <button class="act danger" onclick="acao(${p.id}, 'rejeitar')">Rejeitar</button>
+              <button class="act success" onclick="acao(${p.id}, 'aprovar')">Aprovar</button>
+            </div>` : ''}
+        </div>`;
+      }).join('');
+}
+
+async function acao(id, tipo) {
+  const r = await fetch(`/api/posts/${id}/${tipo}`, { method: 'POST' });
+  if (r.ok) carregar();
+}
+
+renderFiltros();
+carregar();
+setInterval(carregar, 20000);
+</script>
+</body>
+</html>

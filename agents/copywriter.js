@@ -36,6 +36,13 @@ class Copywriter extends AgenteBase {
       WHERE resumo_curto IS NOT NULL AND resumo_curto != ''
     `).all();
 
+    // Prioridade: Claude Max bridge (fila local) > Gemini > fallback
+    // Mas pra outbound real-time precisa de resposta sincrona — então só usa
+    // Claude bridge quando o caller pediu modo='fila' explicitamente.
+    if (input.modo_fila || input.usar_claude_max) {
+      return this._enfileirarClaudeMax({ lead, canal, tentativa, persona, cliente, cerebro, input });
+    }
+
     if (process.env.GEMINI_API_KEY && cerebro.length > 0) {
       try {
         return await this._gerarComGemini({ lead, canal, tentativa, persona, cliente, cerebro });
@@ -45,6 +52,61 @@ class Copywriter extends AgenteBase {
     }
 
     return this._fallbackTemplate({ lead, canal, tentativa, persona, cliente });
+  }
+
+  _enfileirarClaudeMax({ lead, canal, tentativa, persona, cliente, cerebro, input }) {
+    const prompt = this._montarPrompt({ lead, canal, tentativa, persona, cliente, cerebro });
+    const r = this.db.prepare(`
+      INSERT INTO tarefas_ia (tipo, prompt, contexto, prioridade, agente_origem, callback_agente, callback_payload, expires_at)
+      VALUES ('copy_email', ?, ?, 4, 'copywriter', ?, ?, datetime('now', '+12 hours'))
+    `).run(
+      prompt,
+      JSON.stringify({ lead_id: lead.id, canal, tentativa }),
+      input.callback_agente || null,
+      input.callback_payload ? JSON.stringify(input.callback_payload) : null,
+    );
+    return { enfileirada: true, tarefa_id: r.lastInsertRowid, provedor: 'claude_max_fila' };
+  }
+
+  _montarPrompt({ lead, canal, tentativa, persona, cliente, cerebro }) {
+    const frameworks = cerebro.map(c => `[${c.slug}] ${c.titulo}: ${c.resumo_curto}`).join('\n');
+    const dnaCliente = cliente?.dna_resumo || 'L2 Automation — sistema autônomo de prospecção B2B.';
+    const ganho = persona?.ganho_prometido || 'automatizar prospecção comercial';
+    const dor = persona?.dor_principal || 'depender de SDR pra abrir conversas';
+    const tom = persona?.tom || 'executivo, direto';
+    const isFollowup = tentativa > 1;
+
+    return `Você é copywriter sênior brasileiro escrevendo ${canal === 'email' ? 'EMAIL FRIO' : 'MENSAGEM ' + canal.toUpperCase()} pra prospecção B2B.
+
+=== CÉREBRO DE PERSUASÃO (frameworks disponíveis) ===
+${frameworks}
+
+=== EMPRESA QUE VENDE ===
+${dnaCliente}
+
+=== PERSONA ALVO ===
+Nicho: ${lead.nicho || 'não classificado'}
+Dor: ${dor}
+Ganho: ${ganho}
+Tom: ${tom}
+
+=== LEAD ESPECÍFICO ===
+Razão: ${lead.razao_social || ''}
+Fantasia: ${lead.nome_fantasia || ''}
+Cidade/UF: ${lead.cidade || ''}/${lead.uf || ''}
+CNAE: ${lead.cnae_descricao || ''}
+Porte: ${lead.porte || ''}
+
+=== INSTRUÇÕES ===
+${isFollowup
+  ? `Tentativa ${tentativa} de 3. Lead não respondeu. Muda o ângulo, NÃO repete pitch. Tom mais curto.`
+  : `Primeira abordagem. Gancho concreto (situação específica). Sem chavão.`}
+
+Regras: Kahneman (Sistema 1), concretude > abstração, abre loop, fecha no final.
+Sem emoji, sem "espero que esteja bem". ${canal === 'email' ? 'Inclui ASSUNTO curto (max 50 chars).' : ''}
+Máximo 4 linhas (email) ou 2 (WhatsApp/LinkedIn).
+
+Devolva APENAS JSON: {"assunto":"...","corpo":"...","framework_usado":"slug","confianca":0.0-1.0}`;
   }
 
   async _gerarComGemini({ lead, canal, tentativa, persona, cliente, cerebro }) {

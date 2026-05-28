@@ -7,13 +7,11 @@
 
 const AgenteBase = require('./base');
 const Copywriter = require('./copywriter');
+const emailSender = require('./email_sender');
 const {
   jaContatadoRecente, checarRateLimit, consumirRateLimit, agendarFollowups, temOptOut,
 } = require('./utils');
 
-const RESEND_API = 'https://api.resend.com/emails';
-const FROM_EMAIL = process.env.OUTBOUND_FROM_EMAIL || 'levi@l2automation.com.br';
-const FROM_NAME = process.env.OUTBOUND_FROM_NAME || 'Levi · L2 Automation';
 const CONFIANCA_MINIMA = 0.6;
 
 class OutboundEmail extends AgenteBase {
@@ -40,8 +38,8 @@ class OutboundEmail extends AgenteBase {
 
     if (leads.length === 0) return { enviados: 0, mensagem: 'Nenhum lead pra contatar.' };
 
-    const haveResend = !!process.env.RESEND_API_KEY;
-    const stats = { tentados: 0, enviados: 0, dryrun: 0, aprovacao_pendente: 0, dedup: 0, rate_limit: 0, erros: 0 };
+    const provedor = emailSender.provedorAtivo();
+    const stats = { tentados: 0, enviados: 0, dryrun: 0, aprovacao_pendente: 0, dedup: 0, rate_limit: 0, erros: 0, opt_out: 0, provedor };
 
     for (const lead of leads) {
       stats.tentados++;
@@ -92,35 +90,20 @@ class OutboundEmail extends AgenteBase {
         continue;
       }
 
-      // Envia de fato (ou dry-run)
-      let enviado = false;
-      if (haveResend) {
-        try {
-          const res = await fetch(RESEND_API, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: `${FROM_NAME} <${FROM_EMAIL}>`,
-              to: [lead.email],
-              subject: copy.assunto,
-              text: copy.corpo,
-              headers: { 'X-Lead-Id': String(lead.id), 'X-Cliente': clienteSlug },
-            }),
-          });
-          if (!res.ok) throw new Error(`Resend ${res.status}: ${(await res.text()).slice(0, 200)}`);
-          enviado = true;
-          stats.enviados++;
-          consumirRateLimit(this.db, rateChave, limite);
-        } catch (e) {
-          stats.erros++;
-          console.warn(`[outbound_email] envio falhou ${lead.email}:`, e.message);
-          continue;
-        }
-      } else {
+      // Envia de fato (Gmail ou Resend) ou dry-run
+      const resultado = await emailSender.enviar({
+        to: lead.email, subject: copy.assunto, text: copy.corpo, leadId: lead.id,
+      });
+      const enviado = resultado.enviado;
+      if (enviado) {
+        stats.enviados++;
+        consumirRateLimit(this.db, rateChave, limite);
+      } else if (resultado.provedor === 'dryrun') {
         stats.dryrun++;
+      } else {
+        stats.erros++;
+        console.warn(`[outbound_email] envio falhou ${lead.email}: ${resultado.erro}`);
+        continue;
       }
 
       // Registra na tabela conversas
@@ -143,7 +126,7 @@ class OutboundEmail extends AgenteBase {
       agendarFollowups(this.db, lead.id, conv.lastInsertRowid, 'email');
     }
 
-    if (!haveResend) stats.aviso = 'RESEND_API_KEY ausente — dry-run.';
+    if (provedor === 'dryrun') stats.aviso = 'Sem provedor de email configurado (GMAIL_USER+GMAIL_APP_PASSWORD ou RESEND_API_KEY).';
     return stats;
   }
 }

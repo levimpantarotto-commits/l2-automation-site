@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><title>L2 · Fila IA</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-deep:#8B6F1F;--text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88;--warn:#ffb800;--err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .stat { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+    padding: 18px 22px; }
+  .stat-label { font-size: 9px; color: var(--text-3); letter-spacing: 0.25em; text-transform: uppercase; font-weight: 700; }
+  .stat-value { font-size: 2rem; font-weight: 800; color: var(--accent); margin-top: 6px; letter-spacing: -0.03em; }
+  .instr { background: rgba(255,184,0,0.06); border: 1px solid rgba(255,184,0,0.25); border-radius: 4px;
+    padding: 16px 22px; margin-bottom: 28px; font-size: 13px; color: var(--text-2); }
+  .instr code { background: var(--surface-2); padding: 3px 8px; border-radius: 3px; color: var(--accent); font-family: monospace; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+    padding: 18px 24px; margin-bottom: 10px; border-left: 3px solid var(--accent); }
+  .card.processando { border-left-color: var(--warn); }
+  .card.concluida { border-left-color: var(--success); }
+  .card.falhou { border-left-color: var(--err); }
+  .meta { display: flex; gap: 14px; font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .pill-pendente { background: rgba(255,255,255,0.08); color: var(--text-2); }
+  .pill-processando { background: rgba(255,184,0,0.15); color: var(--warn); }
+  .pill-concluida { background: rgba(0,255,136,0.15); color: var(--success); }
+  .pill-falhou { background: rgba(255,51,102,0.10); color: var(--err); }
+  .prompt-preview { background: var(--surface-2); padding: 10px; border-radius: 4px; margin-top: 8px;
+    font-size: 11px; color: var(--text-3); font-family: monospace; max-height: 80px; overflow: hidden; }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Fila IA · Claude Max</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">Tarefas pendentes pro worker local processar</p></div>
+  <span class="badge" id="contador">— tarefas</span>
+</header>
+<nav class="top">
+  <a href="/admin/">Home</a><a href="/admin/inbox">Inbox</a><a href="/admin/leads">Leads</a>
+  <a href="/admin/dashboard">Dashboard</a><a href="/admin/posts">Posts</a>
+  <a href="/admin/roteiros">Roteiros</a><a href="/admin/ideias">Ideias</a>
+  <a href="/admin/ia" class="active">Fila IA</a><a href="/admin/config" style="margin-left: auto;">Config</a>
+</nav>
+
+<div class="instr">
+  <strong style="color: var(--warn);">Pra processar a fila:</strong> abra um terminal no projeto L2 (na tua máquina) e rode:
+  <code>node scripts/worker-claude.js</code>
+  &nbsp; — vai ficar pollando, pegar cada tarefa, mandar pro Claude Max e devolver resultado.
+</div>
+
+<div class="stats" id="stats"></div>
+<main id="lista"></main>
+
+<script>
+async function carregar() {
+  const r = await fetch('/api/ia');
+  const data = await r.json();
+  const tarefas = data.tarefas || [];
+  const stats = data.stats || [];
+
+  document.getElementById('contador').textContent = `${tarefas.length} tarefas`;
+
+  const statMap = {};
+  for (const s of stats) statMap[s.status] = s.c;
+  document.getElementById('stats').innerHTML = ['pendente','processando','concluida','falhou'].map(s => `
+    <div class="stat">
+      <div class="stat-label">${s}</div>
+      <div class="stat-value">${statMap[s] || 0}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('lista').innerHTML = tarefas.length === 0
+    ? '<div style="text-align: center; padding: 60px; color: var(--text-3);">Fila vazia.</div>'
+    : tarefas.map(t => `
+      <div class="card ${t.status}">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+          <div class="meta">
+            <span>#${t.id}</span>
+            <span>Tipo: <strong style="color: var(--accent)">${t.tipo}</strong></span>
+            <span>Origem: <strong>${t.agente_origem || '—'}</strong></span>
+            <span>Pri: <strong>${t.prioridade}</strong></span>
+            <span class="pill pill-${t.status}">${t.status}</span>
+            ${t.worker_id ? `<span>Worker: <strong>${t.worker_id.slice(0, 30)}</strong></span>` : ''}
+            ${t.duracao_ms ? `<span>${t.duracao_ms}ms</span>` : ''}
+          </div>
+          <span style="font-size: 10px; color: var(--text-3); letter-spacing: 0.1em;">${new Date(t.created_at).toLocaleString('pt-BR')}</span>
+        </div>
+        <div class="prompt-preview">${(t.prompt || '').slice(0, 200)}...</div>
+        ${t.erro ? `<div style="color: var(--err); margin-top: 8px; font-size: 12px;">⚠ ${t.erro}</div>` : ''}
+      </div>
+    `).join('');
+}
+
+carregar();
+setInterval(carregar, 5000);
+</script>
+</body>
+</html>
