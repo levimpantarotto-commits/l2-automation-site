@@ -770,9 +770,11 @@ function AppCore({ authedUser, onLogout }) {
   };
 
   const renderCerebro = () => {
-    if (!clienteData) return <div style={{ padding: '50px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>Carregando cérebro de {clienteAtivo}...</div>;
+    if (!clienteData || !clienteData.cliente) return <div style={{ padding: '50px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>Carregando cérebro de {clienteAtivo}...</div>;
     const c = clienteData.cliente;
     const isAutoPilot = c.auto_pilot === 1;
+    const safeFlow = clienteData.neuralFlow || [];
+    const safeStats = clienteData.stats || {};
     
     return (
       <div style={{ padding: '40px 50px', flex: 1, overflowY: 'auto' }}>
@@ -781,7 +783,7 @@ function AppCore({ authedUser, onLogout }) {
             <div style={{ fontSize: '11px', color: 'var(--accent-mute)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>Cérebro do Cliente</div>
             <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '2rem', fontWeight: 600, marginTop: '8px' }}>{c.nome}</h2>
             <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)', marginTop: '6px' }}>
-              slug: {c.slug} {c.vault_folder && `· vault: ${c.vault_folder}`} · posts: {clienteData.stats.manualPosts}
+              slug: {c.slug} {c.vault_folder && `· vault: ${c.vault_folder}`} · posts: {safeStats.manualPosts}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
@@ -835,12 +837,12 @@ function AppCore({ authedUser, onLogout }) {
         <div style={{ marginTop: '30px', background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: '12px', padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div style={{ fontSize: '10px', color: 'var(--success)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>Neural Flow (99_Neural_Flow/)</div>
-            <span style={{ fontSize: '10px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{clienteData.neuralFlow.length} entradas</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{safeFlow.length} entradas</span>
           </div>
-          {clienteData.neuralFlow.length === 0 ? (
+          {safeFlow.length === 0 ? (
             <div style={{ color: 'var(--text-3)', fontStyle: 'italic', fontSize: '13px' }}>Nenhuma entrada ainda. Os agentes escreverão aqui.</div>
           ) : (
-            clienteData.neuralFlow.map(entry => (
+            safeFlow.map(entry => (
               <details key={entry.file} style={{ marginBottom: '10px', background: 'var(--surface-0)', borderRadius: '8px', padding: '12px 16px', border: '1px solid var(--border)' }}>
                 <summary style={{ cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-2)', fontWeight: 600 }}>{entry.file}</summary>
                 <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'var(--font-main)', fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.6, marginTop: '12px', margin: 0 }}>{entry.content}</pre>
@@ -1187,7 +1189,13 @@ function AppCore({ authedUser, onLogout }) {
   return (
     <div className="app-wrapper">
       <aside className="sidebar">
-        <div className="sidebar-logo">L2 <span>AUTOMATION</span></div>
+        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 0' }}>
+          <img src="/admin/favicon.svg" alt="L2" style={{ width: 46, height: 46, flexShrink: 0 }} />
+          <div style={{ lineHeight: 1.05 }}>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.55rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>L2</div>
+            <div style={{ fontSize: '9px', letterSpacing: '0.35em', color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase' }}>Automation</div>
+          </div>
+        </div>
         <nav>
           <button className={`nav-item ${view === 'kanban' ? 'active' : ''}`} onClick={() => setView('kanban')}>Kanban</button>
           <button className={`nav-item ${view === 'cerebro' ? 'active' : ''}`} onClick={() => setView('cerebro')}>Cérebro</button>

@@ -264,7 +264,9 @@ app.get('/api/clientes/:slug', (req, res) => {
       aprovados: 0,
       pendentes: 0,
     },
-    dna: { extracted_at: null, content: 'Cérebro do cliente ainda não configurado. Integração com Obsidian em desenvolvimento.' },
+    dna: 'Cérebro do cliente ainda não configurado. Integração com Obsidian em desenvolvimento — você poderá colar o DNA aqui ou conectar pasta do vault.',
+    log: null,
+    neuralFlow: [],
   });
 });
 
