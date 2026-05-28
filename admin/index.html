@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>L2 Automation — Painel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#08080A; --bg2:#0E0E14; --bg3:#14141A; --line:#1F1F26;
+    --gold:#D4AF37; --gold-soft:rgba(212,175,55,.5);
+    --ink:#F5F1E8; --ink-mute:#7A7568;
+    --green:#7CE07C; --red:#E07C7C; --blue:#7AB8E0;
+  }
+  html,body{background:var(--bg);color:var(--ink);font-family:'Inter Tight',sans-serif;font-weight:300;}
+  body{padding:32px;max-width:1400px;margin:0 auto;}
+  .head{margin-bottom:32px;display:flex;justify-content:space-between;align-items:flex-start;}
+  .head .eyebrow{font-size:10px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold);font-weight:500;margin-bottom:8px;}
+  .head h1{font-family:'Playfair Display',serif;font-weight:500;font-size:32px;letter-spacing:-.01em;}
+  .head em{font-style:italic;color:var(--gold);}
+  .head .status{font-size:11px;color:var(--ink-mute);letter-spacing:.2em;text-transform:uppercase;}
+  .status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;}
+
+  .grid{display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-bottom:32px;}
+  @media (max-width:1000px){.grid{grid-template-columns:1fr;}}
+
+  .card{background:var(--bg2);border:1px solid var(--line);}
+  .card-head{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .card-title{font-family:'Playfair Display',serif;font-size:16px;font-weight:500;}
+  .card-meta{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-mute);}
+  .card-body{padding:16px 20px;}
+
+  /* Agentes table */
+  .agentes{display:grid;gap:1px;background:var(--line);}
+  .agente-row{background:var(--bg2);padding:12px 20px;display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center;}
+  .agente-nome{font-weight:500;font-size:13px;}
+  .agente-desc{font-size:11px;color:var(--ink-mute);margin-top:2px;}
+  .agente-status{font-size:9px;letter-spacing:.2em;text-transform:uppercase;font-weight:500;padding:3px 8px;border-radius:2px;}
+  .st-rodando{background:rgba(124,224,124,.15);color:var(--green);}
+  .st-recente{background:rgba(122,184,224,.15);color:var(--blue);}
+  .st-aguardando{background:rgba(122,122,140,.15);color:var(--ink-mute);}
+  .st-degradado{background:rgba(224,124,124,.15);color:var(--red);}
+  .agente-runs{font-size:10px;color:var(--ink-mute);font-variant-numeric:tabular-nums;}
+  .btn{appearance:none;border:1px solid var(--gold-soft);background:transparent;color:var(--gold);padding:5px 12px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;font-family:inherit;}
+  .btn:hover{background:var(--gold);color:var(--bg);}
+  .btn.primary{background:var(--gold);color:var(--bg);}
+  .btn-sm{padding:3px 8px;font-size:9px;}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);margin-bottom:24px;}
+  .kpi{background:var(--bg2);padding:16px 20px;}
+  .kpi-lbl{font-size:9px;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-mute);}
+  .kpi-val{font-family:'Playfair Display',serif;font-size:28px;color:var(--gold);font-weight:500;margin-top:4px;}
+
+  /* Leads table */
+  .leads-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .leads-table th{text-align:left;padding:8px 12px;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-mute);font-weight:500;border-bottom:1px solid var(--line);}
+  .leads-table td{padding:10px 12px;border-bottom:1px solid var(--line);}
+  .leads-table tr:hover{background:var(--bg3);}
+  .lead-status{font-size:9px;padding:2px 6px;letter-spacing:.1em;text-transform:uppercase;}
+
+  /* Terminal */
+  .terminal{background:#06060A;padding:14px 16px;font-family:'Courier New',monospace;font-size:12px;color:var(--ink);min-height:200px;max-height:300px;overflow-y:auto;}
+  .terminal-line{margin-bottom:4px;line-height:1.5;}
+  .terminal-line .prompt{color:var(--gold);}
+  .terminal-input{display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--line);background:#06060A;}
+  .terminal-input span{color:var(--gold);}
+  .terminal-input input{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-family:'Courier New',monospace;font-size:12px;}
+
+  /* Modal disparar */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:100;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--bg2);border:1px solid var(--gold-soft);padding:24px;max-width:500px;width:90%;}
+  .modal h3{font-family:'Playfair Display',serif;font-size:18px;margin-bottom:12px;}
+  .modal textarea{width:100%;background:var(--bg3);border:1px solid var(--line);color:var(--ink);font-family:'Courier New',monospace;font-size:12px;padding:10px;min-height:120px;margin-bottom:12px;}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+
+  /* Refresh */
+  .refresh-info{font-size:10px;color:var(--ink-mute);text-align:right;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <div>
+    <div class="eyebrow">L2 Automation · Painel interno</div>
+    <h1>Sistema <em>operacional</em></h1>
+  </div>
+  <div class="status" id="health-status">
+    <span class="status-dot" style="background:var(--ink-mute);"></span>Carregando…
+  </div>
+</div>
+
+<div class="kpis">
+  <div class="kpi">
+    <div class="kpi-lbl">Agentes ativos</div>
+    <div class="kpi-val" id="kpi-agentes">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-lbl">Leads totais</div>
+    <div class="kpi-val" id="kpi-leads">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-lbl">Em execução agora</div>
+    <div class="kpi-val" id="kpi-rodando">—</div>
+  </div>
+</div>
+
+<div class="grid">
+  <div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Agentes</div>
+        <div class="card-meta" id="agentes-meta">—</div>
+      </div>
+      <div class="agentes" id="agentes-list">
+        <div class="card-body" style="color:var(--ink-mute);font-size:12px;">Carregando agentes…</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <div class="card-head">
+        <div class="card-title">Leads recentes</div>
+        <div class="card-meta"><a href="#" id="leads-link" style="color:var(--gold);text-decoration:none;">ver todos →</a></div>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <table class="leads-table">
+          <thead>
+            <tr><th>CNPJ</th><th>Razão</th><th>Cidade</th><th>Nicho</th><th>Status</th></tr>
+          </thead>
+          <tbody id="leads-list">
+            <tr><td colspan="5" style="color:var(--ink-mute);padding:20px;text-align:center;">Carregando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Terminal Maestro</div>
+        <div class="card-meta">help · status · leads · run X</div>
+      </div>
+      <div class="terminal" id="terminal">
+        <div class="terminal-line"><span class="prompt">▸</span> Maestro pronto. Digite "help" pra comandos.</div>
+      </div>
+      <div class="terminal-input">
+        <span>▸</span>
+        <input type="text" id="terminal-input" placeholder="comando..." autocomplete="off">
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:24px;">
+      <div class="card-head">
+        <div class="card-title">Padrões de erro aprendidos</div>
+        <div class="card-meta">auto-healing</div>
+      </div>
+      <div class="card-body" id="failures-list" style="font-size:11px;color:var(--ink-mute);">
+        Carregando…
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="refresh-info">Auto-refresh a cada 10s · <a href="#" onclick="event.preventDefault();refresh();" style="color:var(--gold);text-decoration:none;">atualizar agora</a></div>
+
+<!-- Modal disparar agente -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3 id="modal-title">Disparar agente</h3>
+    <p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px;">Input em JSON. Pra Prospector use: <code>{"cnpjs":["12345678000190"]}</code> ou cola CNPJs em "cnpjs_brutos":</p>
+    <textarea id="modal-input" placeholder='{"cnpjs":["..."]}&#10;ou&#10;{"cnpjs_brutos":"12345678000190\n98765432000110"}'></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" id="modal-run">Disparar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let activeAgent = null;
+
+async function fetchJSON(url, opts) {
+  const res = await fetch(API + url, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
+}
+
+async function refresh() {
+  try {
+    const [saude, agentes, leadsResp, failures] = await Promise.all([
+      fetchJSON('/api/saude'),
+      fetchJSON('/api/agentes/status'),
+      fetchJSON('/api/leads?limit=10'),
+      fetchJSON('/api/failures'),
+    ]);
+
+    // Status
+    document.getElementById('health-status').innerHTML =
+      `<span class="status-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);"></span>Sistema online · uptime ${Math.floor(saude.uptime_s/60)}min`;
+
+    // KPIs
+    document.getElementById('kpi-agentes').textContent = agentes.agentes.length;
+    document.getElementById('kpi-leads').textContent = leadsResp.total;
+    document.getElementById('kpi-rodando').textContent = agentes.agentes.filter(a => a.status === 'rodando').length;
+
+    // Agentes
+    const listEl = document.getElementById('agentes-list');
+    listEl.innerHTML = agentes.agentes.map(a => `
+      <div class="agente-row">
+        <div>
+          <div class="agente-nome">${a.label}</div>
+          <div class="agente-desc">${a.descricao || ''}</div>
+        </div>
+        <div class="agente-status st-${a.status}">${a.status}</div>
+        <div class="agente-runs">${a.runs_24h || 0} runs · ${a.erros_24h || 0} erros</div>
+        <button class="btn btn-sm" onclick="openModal('${a.nome}', '${a.label}')">Disparar</button>
+      </div>
+    `).join('');
+    document.getElementById('agentes-meta').textContent = `${agentes.agentes.length} registrados`;
+
+    // Leads
+    const tbody = document.getElementById('leads-list');
+    if (leadsResp.leads.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--ink-mute);padding:20px;text-align:center;">Nenhum lead coletado ainda. Dispare o Prospector com CNPJs.</td></tr>`;
+    } else {
+      tbody.innerHTML = leadsResp.leads.map(l => `
+        <tr>
+          <td style="font-family:monospace;font-size:11px;">${l.cnpj || '—'}</td>
+          <td>${l.razao_social || l.nome_fantasia || '—'}</td>
+          <td>${l.cidade ? `${l.cidade}/${l.uf || ''}` : '—'}</td>
+          <td>${l.nicho || '—'}</td>
+          <td><span class="lead-status st-${l.status === 'novo' ? 'recente' : 'aguardando'}">${l.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // Failures
+    const failEl = document.getElementById('failures-list');
+    if (failures.failures.length === 0) {
+      failEl.innerHTML = '(nenhum erro registrado — bom sinal)';
+    } else {
+      failEl.innerHTML = failures.failures.slice(0, 5).map(f => `
+        <div style="padding:8px 0;border-bottom:1px dashed var(--line);">
+          <div style="color:var(--red);font-weight:500;">${f.agente}: ${f.padrao_erro}</div>
+          <div style="font-size:10px;margin-top:2px;">${f.ocorrencias}x · último: ${new Date(f.ultimo_caso).toLocaleString('pt-BR')}</div>
+        </div>
+      `).join('');
+    }
+  } catch (e) {
+    console.error(e);
+    document.getElementById('health-status').innerHTML =
+      `<span class="status-dot" style="background:var(--red);"></span>Erro ao conectar`;
+  }
+}
+
+function openModal(nome, label) {
+  activeAgent = nome;
+  document.getElementById('modal-title').textContent = `Disparar: ${label}`;
+  document.getElementById('modal-input').value = '{}';
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+}
+document.getElementById('modal-run').addEventListener('click', async () => {
+  let input;
+  try { input = JSON.parse(document.getElementById('modal-input').value || '{}'); }
+  catch (e) { alert('JSON inválido: ' + e.message); return; }
+  try {
+    const r = await fetch(`${API}/api/agentes/${activeAgent}/run`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(input),
+    });
+    const data = await r.json();
+    if (data.error) alert('Erro: ' + data.error);
+    else { addTerminalLine(`▸ disparado: ${activeAgent}`); closeModal(); setTimeout(refresh, 500); }
+  } catch (e) { alert(e.message); }
+});
+
+// Terminal
+function addTerminalLine(text, isUser = false) {
+  const t = document.getElementById('terminal');
+  const div = document.createElement('div');
+  div.className = 'terminal-line';
+  div.innerHTML = isUser ? `<span class="prompt">$</span> ${text}` : text.replace(/\n/g, '<br>');
+  t.appendChild(div);
+  t.scrollTop = t.scrollHeight;
+}
+
+document.getElementById('terminal-input').addEventListener('keydown', async (e) => {
+  if (e.key !== 'Enter') return;
+  const cmd = e.target.value.trim();
+  if (!cmd) return;
+  addTerminalLine(cmd, true);
+  e.target.value = '';
+  try {
+    const r = await fetchJSON('/api/maestro', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({command: cmd}),
+    });
+    if (r.response === 'CLEAR_CONSOLE') {
+      document.getElementById('terminal').innerHTML = '';
+    } else {
+      addTerminalLine(r.response || r.error || '(sem resposta)');
+    }
+  } catch (err) { addTerminalLine('erro: ' + err.message); }
+  refresh();
+});
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

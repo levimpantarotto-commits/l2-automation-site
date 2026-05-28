@@ -1,0 +1,19 @@
+{
+  "name": "l2-automation-app",
+  "version": "0.1.0",
+  "description": "L2 Automation — sistema autônomo de prospecção e venda B2B (OSIA)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "db:init": "node scripts/init-db.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

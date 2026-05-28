@@ -17,3 +17,25 @@ linkedin/
 
 # Documento Word interno (uso local apenas)
 *.docx
+
+# Materiais comerciais internos
+comparativos/
+
+# Stories Instagram (uso local)
+stories/
+.env
+.env.local
+
+# Backend
+node_modules/
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Modelos 3D de teste pesados (106MB, ficam só local)
+models/
+
+# Arquivos PowerShell helpers (não vão pro repo público)
+*.ps1.local
