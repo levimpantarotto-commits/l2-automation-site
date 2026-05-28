@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><title>L2 · Cérebro de Persuasão</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-bright:#F0CB6E;--accent-deep:#8B6F1F;
+    --text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777; --success:#00ff88; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; min-height: 70vh; }
+  .sidebar { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; padding: 18px; }
+  .file-item { padding: 12px 14px; border-radius: 4px; cursor: pointer; margin-bottom: 4px;
+    border: 1px solid transparent; transition: all 0.2s; }
+  .file-item:hover { background: var(--surface-2); border-color: var(--border); }
+  .file-item.active { background: rgba(230,190,72,0.08); border-color: var(--accent); }
+  .file-title { font-weight: 700; font-size: 13px; letter-spacing: -0.005em; }
+  .file-meta { font-size: 9px; color: var(--text-3); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 4px; font-weight: 600; }
+  .content { background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; padding: 28px 36px; overflow-y: auto; max-height: 80vh; }
+  .content h1 { font-size: 1.8rem; margin-bottom: 14px; }
+  .content h2 { font-size: 1.3rem; margin: 22px 0 12px; color: var(--accent); }
+  .content h3 { font-size: 1.05rem; margin: 18px 0 10px; color: var(--accent-bright); }
+  .content p { margin-bottom: 12px; line-height: 1.7; color: var(--text-2); font-size: 14px; }
+  .content ul, .content ol { margin: 12px 0 12px 28px; color: var(--text-2); }
+  .content li { margin-bottom: 6px; line-height: 1.6; }
+  .content code { background: var(--surface-2); padding: 2px 8px; border-radius: 3px; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .content pre { background: var(--surface-2); padding: 16px 22px; border-radius: 4px; margin: 14px 0; font-size: 12px; overflow-x: auto; }
+  .content strong { color: var(--text); }
+  .content blockquote { border-left: 3px solid var(--accent); padding: 10px 20px; margin: 14px 0; background: rgba(230,190,72,0.03); color: var(--text-2); }
+  .busca { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 14px; border-radius: 4px; font-family: inherit; font-size: 13px; outline: none; margin-bottom: 14px; }
+  .busca:focus { border-color: var(--accent); }
+  .empty { color: var(--text-3); text-align: center; padding: 100px 20px; font-size: 1.1rem; }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  mark { background: rgba(230,190,72,0.3); color: var(--text); padding: 1px 3px; border-radius: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Cérebro de Persuasão</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">Frameworks · Livros · Conhecimento aplicado</p></div>
+  <span class="badge" id="contador">— arquivos</span>
+</header>
+<nav class="top">
+  <a href="/admin/">Home</a><a href="/admin/inbox">Inbox</a><a href="/admin/leads">Leads</a>
+  <a href="/admin/dashboard">Dashboard</a><a href="/admin/posts">Posts</a>
+  <a href="/admin/roteiros">Roteiros</a><a href="/admin/ideias">Ideias</a>
+  <a href="/admin/ia">Fila IA</a><a href="/admin/cerebro" class="active">Cérebro</a>
+  <a href="/admin/comecar">Como começar</a><a href="/admin/config" style="margin-left: auto;">Config</a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <input type="text" class="busca" id="busca" placeholder="Buscar nos arquivos..." />
+    <div id="files"></div>
+  </aside>
+  <main class="content" id="content">
+    <div class="empty">Seleciona um arquivo<br><span style="font-size: 12px; opacity: 0.7;">ou usa a busca acima</span></div>
+  </main>
+</div>
+
+<script>
+let arquivos = [];
+let arquivoAtual = null;
+let queryBusca = '';
+
+async function carregar() {
+  const r = await fetch('/api/cerebro');
+  const data = await r.json();
+  arquivos = data.arquivos || [];
+  document.getElementById('contador').textContent = `${arquivos.length} arquivos`;
+  renderLista();
+}
+
+function renderLista() {
+  const lista = document.getElementById('files');
+  const filtrados = queryBusca
+    ? arquivos.filter(a => a.titulo.toLowerCase().includes(queryBusca.toLowerCase()))
+    : arquivos;
+
+  lista.innerHTML = filtrados.length === 0
+    ? '<div style="color: var(--text-3); padding: 20px; text-align: center;">Nada encontrado</div>'
+    : filtrados.map(a => `
+      <div class="file-item ${arquivoAtual === a.slug ? 'active' : ''}" onclick="abrir('${a.slug}')">
+        <div class="file-title">${a.titulo}</div>
+        <div class="file-meta">${a.fonte || '—'} · ${(a.tamanho_bytes / 1024).toFixed(1)}KB</div>
+      </div>
+    `).join('');
+}
+
+async function abrir(slug) {
+  arquivoAtual = slug;
+  renderLista();
+  const r = await fetch('/api/cerebro/' + slug);
+  if (!r.ok) {
+    document.getElementById('content').innerHTML = '<div class="empty">Erro ao carregar</div>';
+    return;
+  }
+  const data = await r.json();
+  // Renderiza markdown simples
+  const md = data.conteudo_md || '';
+  const html = renderMarkdown(md);
+  document.getElementById('content').innerHTML = html;
+  // Resalta termos da busca
+  if (queryBusca) {
+    const content = document.getElementById('content');
+    const regex = new RegExp(`(${queryBusca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    content.innerHTML = content.innerHTML.replace(regex, '<mark>$1</mark>');
+  }
+}
+
+function renderMarkdown(md) {
+  // Parser markdown minúsculo (pra MD simples — sem libs externas)
+  // Remove frontmatter
+  md = md.replace(/^---[\s\S]*?---\n/, '');
+  let html = md
+    // Code blocks
+    .replace(/```([\s\S]*?)```/g, (m, c) => `<pre>${escapeHtml(c)}</pre>`)
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // Bold + italic
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    // Listas
+    .replace(/^\- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => '<ul>' + m + '</ul>')
+    // Blockquote
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    // Parágrafos
+    .split('\n\n')
+    .map(p => p.trim().startsWith('<') ? p : `<p>${p}</p>`)
+    .join('\n');
+  return html;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+document.getElementById('busca').addEventListener('input', e => {
+  queryBusca = e.target.value;
+  renderLista();
+  if (arquivoAtual && queryBusca) abrir(arquivoAtual);
+});
+
+carregar();
+</script>
+</body>
+</html>

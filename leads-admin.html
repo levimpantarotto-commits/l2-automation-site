@@ -78,6 +78,26 @@
   <a href="/admin/" style="margin-left: auto;">← Painel React</a>
 </nav>
 
+<div style="display: flex; gap: 10px; margin-bottom: 16px;">
+  <button onclick="abrirImport()" style="background: var(--surface-1); color: var(--accent); border: 1px solid var(--accent); padding: 9px 18px; border-radius: 4px; font-family: inherit; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; cursor: pointer;">↑ Importar CSV</button>
+  <a id="export-link" href="/api/leads/export.csv" style="background: var(--surface-1); color: var(--accent); border: 1px solid var(--accent); padding: 9px 18px; border-radius: 4px; text-decoration: none; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;">↓ Exportar CSV</a>
+</div>
+
+<div id="import-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; align-items: center; justify-content: center;">
+  <div style="background: var(--surface-1); border: 1px solid var(--accent); border-radius: 8px; padding: 32px; width: 90%; max-width: 640px;">
+    <h2 style="font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; text-transform: uppercase;">Importar leads via CSV</h2>
+    <p style="color: var(--text-3); font-size: 12px; margin-bottom: 18px;">Cole CNPJs (1 por linha) ou CSV com colunas <code style="background: var(--surface-2); padding: 2px 6px; border-radius: 2px;">cnpj,razao_social,email,telefone</code></p>
+    <textarea id="import-csv" placeholder="12345678000190,Empresa LTDA,contato@empresa.com&#10;98765432000110" style="width: 100%; min-height: 200px; background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 14px; border-radius: 4px; font-family: monospace; font-size: 12px; outline: none;"></textarea>
+    <label style="display: block; margin: 14px 0; font-size: 12px; color: var(--text-2);">
+      <input type="checkbox" id="import-dispatch" checked /> Disparar Prospector pra enriquecer logo
+    </label>
+    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+      <button onclick="document.getElementById('import-modal').style.display='none'" style="background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); padding: 10px 22px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700;">Cancelar</button>
+      <button onclick="confirmarImport()" style="background: var(--accent); color: #000; border: 1px solid var(--accent); padding: 10px 22px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 800;">Importar</button>
+    </div>
+  </div>
+</div>
+
 <div class="filtros">
   <input type="text" id="f-q" placeholder="Buscar CNPJ/razão social..." />
   <select id="f-status">
@@ -216,6 +236,23 @@ async function optOut(leadId, email, cnpj) {
   });
   alert('Opt-out registrado.');
   document.getElementById('detalhe').classList.remove('open');
+  carregar();
+}
+
+function abrirImport() { document.getElementById('import-modal').style.display = 'flex'; }
+
+async function confirmarImport() {
+  const csv = document.getElementById('import-csv').value.trim();
+  if (!csv) return alert('Cola o CSV/CNPJs primeiro');
+  const dispatch = document.getElementById('import-dispatch').checked;
+  const r = await fetch('/api/leads/import', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ csv, dispatch_prospector: dispatch }),
+  });
+  const stats = await r.json();
+  alert(`${stats.lidas} lidas · ${stats.novos} novos · ${stats.ja_existiam} já existiam · ${stats.invalidos} inválidos${stats.prospector_disparado ? ' · Prospector disparado pra ' + stats.prospector_disparado : ''}`);
+  document.getElementById('import-modal').style.display = 'none';
+  document.getElementById('import-csv').value = '';
   carregar();
 }
 

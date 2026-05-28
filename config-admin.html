@@ -86,6 +86,18 @@
   <div id="nichos-list"></div>
   <div class="add-form">
     <h3 style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent-deep); margin-bottom: 12px;">+ Adicionar nicho alvo</h3>
+    <div class="row"><label>Template</label>
+      <select id="n-template" onchange="aplicarTemplate(this.value)">
+        <option value="">Em branco</option>
+        <option value="imob-rs">Imobiliárias RS/SC/PR (EPP/ME)</option>
+        <option value="imob-sp">Imobiliárias SP capital (DEMAIS)</option>
+        <option value="clinica">Clínicas médicas/odonto (Sul/Sudeste)</option>
+        <option value="advocacia">Escritórios de advocacia (DEMAIS)</option>
+        <option value="consult">Consultoria empresarial (médio/grande porte)</option>
+        <option value="varejo">Varejo (EPP/ME)</option>
+        <option value="industria">Indústria manufatura (DEMAIS)</option>
+      </select>
+      <span></span></div>
     <div class="row"><label>Nome</label><input id="n-nome" placeholder="Imobiliárias premium SP" /></div>
     <div class="row"><label>CNAEs (vírgula)</label><input id="n-cnae" placeholder="6810, 6822" /></div>
     <div class="row"><label>UFs (vírgula)</label><input id="n-uf" placeholder="SP, RJ" /></div>
@@ -213,6 +225,26 @@ async function salvarPersona(nicho) {
     method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   toast(r.ok ? 'Persona salva' : 'Erro: ' + r.status);
+}
+
+const TEMPLATES = {
+  'imob-rs': { nome: 'Imobiliárias SUL — EPP/ME', cnae: '6810, 6822', uf: 'RS, SC, PR', porte: 'EPP, ME, DEMAIS', cap: 50000 },
+  'imob-sp': { nome: 'Imobiliárias SP capital — DEMAIS', cnae: '6810, 6822', uf: 'SP', porte: 'DEMAIS', cap: 200000 },
+  'clinica': { nome: 'Clínicas médicas/odonto SUL+SUDESTE', cnae: '8610, 8621, 8622, 8630, 8650', uf: 'SP, RJ, MG, RS, SC, PR', porte: 'EPP, DEMAIS', cap: 100000 },
+  'advocacia': { nome: 'Escritórios de advocacia DEMAIS', cnae: '6911, 6912', uf: 'SP, RJ, MG, RS, PR', porte: 'DEMAIS', cap: 200000 },
+  'consult': { nome: 'Consultoria empresarial médio/grande', cnae: '7020, 7022, 7320, 7490', uf: 'SP, RJ, MG, RS, SC, PR', porte: 'DEMAIS', cap: 500000 },
+  'varejo': { nome: 'Varejo EPP/ME', cnae: '4711, 4712, 4713, 4721, 4722, 4729', uf: 'SP, RJ, RS, SC, PR', porte: 'EPP, ME', cap: 30000 },
+  'industria': { nome: 'Indústria manufatura DEMAIS', cnae: '10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32', uf: 'SP, RJ, MG, RS, SC, PR', porte: 'DEMAIS', cap: 1000000 },
+};
+
+function aplicarTemplate(key) {
+  if (!key || !TEMPLATES[key]) return;
+  const t = TEMPLATES[key];
+  document.getElementById('n-nome').value = t.nome;
+  document.getElementById('n-cnae').value = t.cnae;
+  document.getElementById('n-uf').value = t.uf;
+  document.getElementById('n-porte').value = t.porte;
+  document.getElementById('n-cap-min').value = t.cap;
 }
 
 async function addNicho() {

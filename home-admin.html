@@ -177,6 +177,11 @@
 <section>
   <h2 class="section-title">O que você pode fazer agora</h2>
   <div class="actions">
+    <a class="action" href="/admin/comecar" style="border-color: rgba(255,184,0,0.30); background: rgba(255,184,0,0.04);">
+      <div class="icon" style="color: var(--warn); border-color: rgba(255,184,0,0.40);">→</div>
+      <h3 style="color: var(--warn);">Como Começar</h3>
+      <p>Wizard passo-a-passo do setup. 7 passos guiados. Comece aqui se for tua primeira vez.</p>
+    </a>
     <a class="action" href="/admin/config">
       <div class="icon">⚙</div>
       <h3>Configurar</h3>
@@ -295,14 +300,37 @@ async function carregar() {
       </div>
     `).join('');
 
-  // Avisos do sistema (chaves faltando)
-  const sauce = await fetchJson('/api/saude');
-  const cliente = (await fetchJson('/api/clientes'))?.[0] || {};
+  // Avisos do sistema (config faltando)
+  const [sauce, cliente0, nichos, ideias, ia, runs] = await Promise.all([
+    fetchJson('/api/saude'),
+    fetchJson('/api/clientes').then(d => (d || [])[0] || {}),
+    fetchJson('/api/nichos'),
+    fetchJson('/api/ideias'),
+    fetchJson('/api/ia'),
+    fetchJson('/api/runs?limit=200'),
+  ]);
+
   const av = [];
-  if (cliente.auto_pilot === 0) {
-    av.push({ tipo: 'warning', html: '<strong>Auto-pilot DESLIGADO.</strong> Toda mensagem gerada vai pra fila de aprovação. Para o sistema enviar sozinho, ligue em Configurar.' });
+  if (!nichos?.nichos?.length) {
+    av.push({ tipo: 'warning', html: '<strong>Sem ICP cadastrado.</strong> CNPJ Finder não busca empresas. <a href="/admin/comecar" style="color: var(--accent); text-decoration: underline;">Como começar →</a>' });
   }
-  // Detectar se há chaves env (heurística: se nenhum email saiu nas conversas com agente_origem sem "_dryrun")
+  // Heurística Gmail: se ja houve outbound e teve email enviado de verdade (não _dryrun)
+  const outboundRuns = (runs?.runs || []).filter(r => r.agente === 'outbound_email' && r.status === 'sucesso');
+  if (outboundRuns.length === 0) {
+    av.push({ tipo: 'warning', html: '<strong>Sem provedor de email configurado.</strong> Gmail SMTP precisa ser ligado pra envio real. <a href="/admin/comecar" style="color: var(--accent); text-decoration: underline;">Como ligar →</a>' });
+  }
+  // Worker Claude Max: tem tarefas processadas?
+  const concluidas = (ia?.stats || []).find(s => s.status === 'concluida')?.c || 0;
+  const pendentes = (ia?.stats || []).find(s => s.status === 'pendente')?.c || 0;
+  if (pendentes > 0 && concluidas === 0) {
+    av.push({ tipo: 'warning', html: `<strong>${pendentes} tarefas IA esperando worker local.</strong> Rode <code style="background:rgba(0,0,0,0.5);padding:2px 8px;border-radius:3px">node scripts/worker-claude.js</code> no teu PC.` });
+  }
+  if (!ideias?.ideias?.length) {
+    av.push({ tipo: 'warning', html: '<strong>Banco de ideias vazio.</strong> Post Generator não tem matéria-prima. <a href="/admin/ideias" style="color: var(--accent); text-decoration: underline;">Adicionar →</a>' });
+  }
+  if (cliente0.auto_pilot === 0 && nichos?.nichos?.length > 0) {
+    av.push({ tipo: 'warning', html: '<strong>Auto-pilot OFF.</strong> Toda msg vai pra Inbox. Quando confiar no copy, ligue em <a href="/admin/config" style="color: var(--accent); text-decoration: underline;">Config</a>.' });
+  }
   document.getElementById('avisos').innerHTML = av.map(a => `<div class="aviso ${a.tipo === 'critical' ? 'crit' : ''}">${a.html}</div>`).join('');
 }
 

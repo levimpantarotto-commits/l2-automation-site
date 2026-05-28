@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"><title>L2 · Como Começar</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-bright:#F0CB6E;--accent-deep:#8B6F1F;
+    --text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88;--warn:#ffb800;--err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 32px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+
+  .step { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 18px; overflow: hidden; transition: all 0.2s; }
+  .step.done { border-left: 4px solid var(--success); }
+  .step.pending { border-left: 4px solid var(--warn); }
+  .step.todo { border-left: 4px solid var(--text-3); }
+  .step-head { display: flex; align-items: center; padding: 22px 28px; cursor: pointer; gap: 18px; }
+  .step-num { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px;
+    color: var(--text-3); flex-shrink: 0; }
+  .step.done .step-num { border-color: var(--success); color: var(--success); }
+  .step.pending .step-num { border-color: var(--warn); color: var(--warn); }
+  .step-info { flex: 1; }
+  .step-title { font-weight: 800; font-size: 1.15rem; letter-spacing: -0.015em; }
+  .step-sub { font-size: 12px; color: var(--text-3); margin-top: 4px; letter-spacing: 0.05em; }
+  .step-status { font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; font-weight: 700;
+    padding: 5px 12px; border-radius: 12px; }
+  .step.done .step-status { background: rgba(0,255,136,0.15); color: var(--success); }
+  .step.pending .step-status { background: rgba(255,184,0,0.15); color: var(--warn); }
+  .step.todo .step-status { background: rgba(255,255,255,0.05); color: var(--text-3); }
+  .step-body { padding: 4px 28px 28px 86px; display: none; color: var(--text-2); font-size: 13px; line-height: 1.7; }
+  .step.open .step-body { display: block; }
+  .step-body code { background: var(--surface-2); padding: 3px 8px; border-radius: 3px; color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .step-body pre { background: var(--surface-2); padding: 14px 18px; border-radius: 4px; overflow-x: auto;
+    margin: 12px 0; font-size: 12px; line-height: 1.5; }
+  .step-body a { color: var(--accent); text-decoration: none; }
+  .step-body a:hover { text-decoration: underline; }
+  .step-body strong { color: var(--text); }
+  .step-body ul, .step-body ol { padding-left: 22px; margin: 10px 0; }
+  .step-body li { margin-bottom: 6px; }
+  .progress { background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 18px 22px; margin-bottom: 28px; }
+  .progress-bar { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; margin-top: 10px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-deep), var(--accent), var(--accent-bright));
+    transition: width 0.5s; }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>Como começar</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">Setup passo-a-passo do L2 Automation</p></div>
+  <span class="badge" id="prog-badge">— de 7</span>
+</header>
+
+<nav class="top">
+  <a href="/admin/">Home</a><a href="/admin/inbox">Inbox</a><a href="/admin/leads">Leads</a>
+  <a href="/admin/dashboard">Dashboard</a><a href="/admin/posts">Posts</a>
+  <a href="/admin/roteiros">Roteiros</a><a href="/admin/ideias">Ideias</a>
+  <a href="/admin/ia">Fila IA</a><a href="/admin/comecar" class="active">Como começar</a>
+  <a href="/admin/config" style="margin-left: auto;">Config</a>
+</nav>
+
+<div class="progress">
+  <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700;">
+    <span>Setup completo</span><span id="prog-percent">0%</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width: 0%"></div></div>
+</div>
+
+<div id="steps"></div>
+</div>
+
+<script>
+const STEPS = [
+  {
+    id: 'config-icp',
+    title: 'Cadastrar ICP — quem queres prospectar',
+    sub: 'Sem ICP cadastrado, o CNPJ Finder não busca nada',
+    body: `
+      <p>O <strong>ICP (Ideal Customer Profile)</strong> diz pro sistema qual tipo de empresa buscar.</p>
+      <ol>
+        <li>Abre <a href="/admin/config">Configurar</a></li>
+        <li>Rola até "Nichos alvo"</li>
+        <li>Preenche: nome do nicho + CNAEs (ex: <code>6810</code> pra imobiliária) + UFs (<code>RS,SC,PR</code>) + portes (<code>EPP,ME</code>)</li>
+        <li>Adicionar</li>
+      </ol>
+      <p>Exemplo já cadastrado: "Imobiliárias SUL — EPP/ME" (CNAEs 6810/6822, UFs RS/SC/PR, capital ≥50k).</p>
+    `,
+    check: async () => {
+      const r = await fetch('/api/nichos');
+      const d = await r.json();
+      return (d.nichos || []).length > 0;
+    },
+  },
+  {
+    id: 'gmail-smtp',
+    title: 'Ligar Gmail SMTP — pra mandar email real',
+    sub: 'Sem isso, todos os outbound ficam em dry-run (não saem)',
+    body: `
+      <p>Vou usar o <strong>teu Gmail</strong> direto. Sem domínio próprio, sem DNS — 500 emails/dia grátis.</p>
+      <ol>
+        <li>Abre <a href="https://myaccount.google.com/apppasswords" target="_blank">myaccount.google.com/apppasswords</a></li>
+        <li>Login no teu Google</li>
+        <li>App = <strong>Mail</strong>, Device = <strong>L2 Automation</strong></li>
+        <li>Vai aparecer uma senha de 16 caracteres tipo <code>abcd efgh ijkl mnop</code></li>
+        <li>Me passa essa senha + teu email Gmail</li>
+        <li>Eu coloco <code>GMAIL_USER</code> e <code>GMAIL_APP_PASSWORD</code> no env do Coolify</li>
+      </ol>
+      <p><strong>Importante:</strong> precisa ter <strong>2FA ativado</strong> no Google senão a opção "senha de app" não aparece.</p>
+    `,
+    check: async () => {
+      // Não dá pra checar do front se as env vars tão setadas no Coolify
+      // Heurística: olhar se algum email foi enviado de verdade
+      const r = await fetch('/api/runs?agente=outbound_email&limit=1');
+      const d = await r.json();
+      return false; // sempre mostra como pendente até user confirmar
+    },
+    sempre_pending: true,
+  },
+  {
+    id: 'claude-max',
+    title: 'Rodar worker Claude Max local',
+    sub: 'Sem isso, posts/roteiros/copy não geram (fila acumula)',
+    body: `
+      <p>O worker pesca tarefas da fila e processa via Claude Max no teu PC.</p>
+      <ol>
+        <li>Abre terminal no projeto:
+          <pre>cd C:\\Users\\55119\\.gemini\\antigravity\\l2-automation-site</pre>
+        </li>
+        <li>Roda:
+          <pre>node scripts/worker-claude.js</pre>
+        </li>
+        <li>Vai polleando a fila. Deixa essa janela aberta enquanto quiser que o Claude processe.</li>
+      </ol>
+      <p>Variações:</p>
+      <ul>
+        <li><strong>Só posts:</strong> <code>WORKER_TIPOS=post_linkedin,post_instagram node scripts/worker-claude.js</code></li>
+        <li><strong>Anthropic SDK direto:</strong> coloca <code>ANTHROPIC_API_KEY=sk-...</code> no <code>.env</code> e roda — não precisa Claude Code instalado</li>
+      </ul>
+      <p>Ver tarefas pendentes na <a href="/admin/ia">Fila IA</a>.</p>
+    `,
+    check: async () => {
+      // Worker tem workers ativos se alguma tarefa tá processando OU foi concluída nas últimas 24h
+      const r = await fetch('/api/ia');
+      const d = await r.json();
+      const c = (d.stats || []).find(s => s.status === 'concluida');
+      return c && c.c > 0;
+    },
+  },
+  {
+    id: 'ideias',
+    title: 'Adicionar ideias base',
+    sub: 'Sem ideias, Post Generator e Video Prototyper não têm matéria-prima',
+    body: `
+      <p>Ideias são a matéria-prima de posts/roteiros. 3 jeitos de adicionar:</p>
+      <ul>
+        <li><strong>Manual:</strong> <a href="/admin/ideias">/admin/ideias</a> → preenche título + descrição → "Adicionar"</li>
+        <li><strong>Drive Sync:</strong> rodar <code>scripts/drive-puller.js</code> local (precisa OAuth Google)</li>
+        <li><strong>Via API:</strong> <code>POST /api/ideias</code> com <code>{titulo, descricao, fonte}</code></li>
+      </ul>
+      <p>Adicione pelo menos 5-10 ideias variadas (cases, opiniões, learnings, tendências) pra ter combustível.</p>
+    `,
+    check: async () => {
+      const r = await fetch('/api/ideias');
+      const d = await r.json();
+      return (d.ideias || []).length >= 3;
+    },
+  },
+  {
+    id: 'auto-pilot',
+    title: 'Decidir auto-pilot ON ou OFF',
+    sub: 'OFF = tudo passa pelo teu OK no Inbox. ON = sistema envia direto.',
+    body: `
+      <p>Hoje tá em <strong>OFF</strong> (segurança). Toda mensagem gerada vai pra <a href="/admin/inbox">Inbox</a> esperando teu OK.</p>
+      <p>Pra ligar: <a href="/admin/config">Configurar</a> → cliente l2-automation → Auto-pilot = ON.</p>
+      <p><strong>Recomendado começar OFF</strong>, observar 1-2 semanas o que o Claude está gerando, ajustar personas, depois ligar.</p>
+    `,
+    check: async () => {
+      const r = await fetch('/api/clientes');
+      const c = await r.json();
+      const l2 = (c || []).find(x => x.slug === 'l2-automation');
+      return l2 && l2.auto_pilot === 1;
+    },
+    sempre_opcional: true,
+  },
+  {
+    id: 'cnpj-source',
+    title: 'Conectar fonte de CNPJ (dump Receita ou Apify)',
+    sub: 'Sem fonte, o CNPJ Finder não acha empresas — pipeline vazio',
+    body: `
+      <p>Casa dos Dados (gratuita) tá bloqueada por Cloudflare. Alternativas:</p>
+      <ul>
+        <li><strong>Dump Receita Federal (recomendado, gratuito):</strong>
+          <pre>node scripts/import-receita-dump.js --all</pre>
+          Demora ~3h. Depois fica funcionando offline. Mensal atualizar.
+        </li>
+        <li><strong>Apify (paga ~$50/mês):</strong> contorna Cloudflare, busca dinâmica</li>
+        <li><strong>Importar CSV manual:</strong> sobe arquivo com CNPJs na seção <a href="/admin/leads">Leads</a></li>
+      </ul>
+    `,
+    check: async () => {
+      const r = await fetch('/api/saude');
+      const d = await r.json();
+      return (d.leads || 0) > 0;
+    },
+  },
+  {
+    id: 'drive-sync',
+    title: 'Setup Drive Sync (opcional)',
+    sub: 'Pra puxar transcrições de reunião automaticamente',
+    body: `
+      <p>Cria pasta no Drive, compartilha com service account Google, roda o puller local.</p>
+      <ol>
+        <li>Cria pasta no <a href="https://drive.google.com" target="_blank">Google Drive</a> chamada "L2 Transcrições"</li>
+        <li>Vai pra <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank">Google Cloud Console</a> → cria service account, baixa JSON</li>
+        <li>Salva como <code>google-service-account.json</code> na raiz do projeto</li>
+        <li>Compartilha a pasta do Drive com o EMAIL da service account (read-only)</li>
+        <li>Pega o folder_id da URL da pasta</li>
+        <li>Roda:
+          <pre>node scripts/drive-puller.js --folder-id &lt;ID&gt;</pre>
+        </li>
+      </ol>
+      <p>A cada 5min ele puxa arquivos novos como ideias.</p>
+    `,
+    sempre_opcional: true,
+    check: async () => {
+      const r = await fetch('/api/ideias');
+      const d = await r.json();
+      return (d.ideias || []).some(i => i.fonte === 'drive_transcricao');
+    },
+  },
+];
+
+async function renderSteps() {
+  const container = document.getElementById('steps');
+  container.innerHTML = '';
+  let done = 0, total = STEPS.filter(s => !s.sempre_opcional).length;
+
+  for (let i = 0; i < STEPS.length; i++) {
+    const s = STEPS[i];
+    let status = 'todo';
+    if (s.sempre_pending) {
+      status = 'pending';
+    } else {
+      try {
+        const ok = await s.check();
+        if (ok) { status = 'done'; if (!s.sempre_opcional) done++; }
+        else status = s.sempre_opcional ? 'todo' : 'pending';
+      } catch { status = 'todo'; }
+    }
+
+    container.insertAdjacentHTML('beforeend', `
+      <div class="step ${status}" data-i="${i}">
+        <div class="step-head" onclick="this.parentElement.classList.toggle('open')">
+          <div class="step-num">${i + 1}</div>
+          <div class="step-info">
+            <div class="step-title">${s.title}</div>
+            <div class="step-sub">${s.sub}${s.sempre_opcional ? ' · opcional' : ''}</div>
+          </div>
+          <span class="step-status">${status === 'done' ? '✓ Feito' : status === 'pending' ? 'Pendente' : 'Não feito'}</span>
+        </div>
+        <div class="step-body">${s.body}</div>
+      </div>
+    `);
+  }
+
+  const pct = Math.round((done / total) * 100);
+  document.getElementById('prog-percent').textContent = pct + '%';
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-badge').textContent = `${done} de ${total}`;
+}
+
+renderSteps();
+</script>
+</body>
+</html>

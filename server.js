@@ -110,6 +110,8 @@ app.get('/admin/posts', (req, res) => res.sendFile(path.join(__dirname, 'posts-a
 app.get('/admin/roteiros', (req, res) => res.sendFile(path.join(__dirname, 'roteiros-admin.html')));
 app.get('/admin/ideias', (req, res) => res.sendFile(path.join(__dirname, 'ideias-admin.html')));
 app.get('/admin/ia', (req, res) => res.sendFile(path.join(__dirname, 'ia-admin.html')));
+app.get('/admin/comecar', (req, res) => res.sendFile(path.join(__dirname, 'comecar-admin.html')));
+app.get('/admin/cerebro', (req, res) => res.sendFile(path.join(__dirname, 'cerebro-admin.html')));
 app.get('/admin/escritorio.html', (req, res) => {
   const built = path.join(__dirname, 'public/admin/escritorio.html');
   if (fs.existsSync(built)) return res.sendFile(built);
@@ -133,6 +135,7 @@ const ARQS_RAIZ = [
   'sitemap.xml', 'robots.txt', 'logo.svg', 'inbox.html',
   'dashboard-admin.html', 'leads-admin.html', 'config-admin.html', 'home-admin.html',
   'posts-admin.html', 'roteiros-admin.html', 'ideias-admin.html', 'ia-admin.html',
+  'comecar-admin.html', 'cerebro-admin.html',
 ];
 ARQS_RAIZ.forEach(arq => {
   const file = path.join(__dirname, arq);
@@ -984,6 +987,84 @@ app.get('/api/leads/:id', (req, res) => {
   const followups = db.prepare(`SELECT * FROM followups WHERE lead_id = ? ORDER BY agendado_para ASC`).all(req.params.id);
   const aprovacoes = db.prepare(`SELECT * FROM aprovacoes WHERE lead_id = ? ORDER BY created_at DESC`).all(req.params.id);
   res.json({ lead, conversas, followups, aprovacoes });
+});
+
+// Exportar leads como CSV
+app.get('/api/leads/export.csv', (req, res) => {
+  const { status, nicho, uf, score_min } = req.query;
+  let sql = 'SELECT * FROM leads WHERE 1=1';
+  const params = [];
+  if (status) { sql += ' AND status = ?'; params.push(status); }
+  if (nicho) { sql += ' AND nicho = ?'; params.push(nicho); }
+  if (uf) { sql += ' AND uf = ?'; params.push(uf); }
+  if (score_min) { sql += ' AND score >= ?'; params.push(Number(score_min)); }
+  sql += ' ORDER BY data_coleta DESC LIMIT 5000';
+
+  const leads = db.prepare(sql).all(...params);
+  const cols = ['id','cnpj','razao_social','nome_fantasia','email','telefone','cidade','uf','cnae_principal','porte','capital_social','score','status','nicho','data_coleta'];
+  const esc = v => v === null || v === undefined ? '' : `"${String(v).replace(/"/g, '""')}"`;
+  const csv = [cols.join(','), ...leads.map(l => cols.map(c => esc(l[c])).join(','))].join('\n');
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="leads-l2-${new Date().toISOString().slice(0,10)}.csv"`);
+  res.send('﻿' + csv); // BOM pra Excel abrir UTF-8 certo
+});
+
+// Importar leads via CSV/texto (1 CNPJ por linha, OU CSV com header cnpj,razao_social,email)
+app.post('/api/leads/import', (req, res) => {
+  const { csv, dispatch_prospector = false } = req.body || {};
+  if (!csv) return res.status(400).json({ error: 'csv obrigatorio' });
+
+  const linhas = csv.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const stats = { lidas: 0, novos: 0, ja_existiam: 0, invalidos: 0 };
+
+  // Detecta se primeira linha é header
+  const header = linhas[0].toLowerCase();
+  const temHeader = header.includes('cnpj') || header.includes('razao');
+  const rows = temHeader ? linhas.slice(1) : linhas;
+
+  // Detecta separador
+  const sep = rows[0]?.includes(';') ? ';' : rows[0]?.includes(',') ? ',' : null;
+
+  for (const linha of rows) {
+    stats.lidas++;
+    const cols = sep ? linha.split(sep).map(c => c.replace(/^"|"$/g, '').trim()) : [linha];
+    const cnpj = (cols[0] || '').replace(/\D/g, '');
+    if (cnpj.length !== 14) { stats.invalidos++; continue; }
+
+    const exists = db.prepare('SELECT id FROM leads WHERE cnpj = ?').get(cnpj);
+    if (exists) { stats.ja_existiam++; continue; }
+
+    const lead = {
+      cnpj,
+      razao_social: cols[1] || null,
+      email: cols[2] || null,
+      telefone: cols[3] || null,
+      origem: 'csv_import',
+      status: 'novo',
+    };
+
+    db.prepare(`
+      INSERT INTO leads (cnpj, razao_social, email, telefone, origem, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(lead.cnpj, lead.razao_social, lead.email, lead.telefone, lead.origem, lead.status);
+    stats.novos++;
+  }
+
+  // Dispara prospector automaticamente pra enriquecer os novos
+  if (dispatch_prospector && stats.novos > 0) {
+    const novosCnpjs = db.prepare(`
+      SELECT cnpj FROM leads WHERE origem = 'csv_import' AND data_coleta > datetime('now', '-1 minute')
+    `).all().map(r => r.cnpj);
+    try {
+      const Prospector = require('./agents/prospector');
+      const p = new Prospector(db);
+      p.run({ cnpjs: novosCnpjs }, 'csv_import').catch(e => console.error('[csv->prospector]', e.message));
+      stats.prospector_disparado = novosCnpjs.length;
+    } catch (e) { /* ignore */ }
+  }
+
+  res.json(stats);
 });
 
 // Lista leads com mais filtros
