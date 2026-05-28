@@ -1,111 +1,175 @@
-// SDR Neural — agente que conversa com leads no WhatsApp/Email pra qualificar.
-// Por padrão: gera resposta via Gemini (se GEMINI_API_KEY) ou template fixo.
-// Canais reais (WhatsApp Baileys / Evolution API): integração na próxima iteração.
+// SDR Neural — duas funções:
+//   1) Processar followups pendentes (régua D+3/D+7/D+15)
+//   2) Quando lead responde, gerar próxima mensagem na conversa
 //
-// Modos: 'followup' (lead parou de responder) | 'resposta' (lead respondeu, gerar próxima msg)
-//
-// Por enquanto: trabalha em dry-run sempre — registra a mensagem em `conversas` mas não envia.
+// Usa Copywriter pra geração e respeita aprovação humana / rate limit.
 
 const AgenteBase = require('./base');
+const Copywriter = require('./copywriter');
+const {
+  checarRateLimit, consumirRateLimit, cancelarFollowupsPendentes,
+} = require('./utils');
 
-const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
-
-const TEMPLATE_FOLLOWUP = [
-  'Oi, só fazendo follow-up rápido — meu email anterior chegou aí?',
-  'Bom dia! Vi que talvez tenha passado batido — posso mandar o print do painel rodando?',
-  'Última tentativa pra não virar spam: querendo ver os primeiros leads qualificados, me responde aqui.',
-];
+const RESEND_API = 'https://api.resend.com/emails';
+const FROM_EMAIL = process.env.OUTBOUND_FROM_EMAIL || 'levi@l2automation.com.br';
+const FROM_NAME = process.env.OUTBOUND_FROM_NAME || 'Levi · L2 Automation';
+const CONFIANCA_MINIMA = 0.6;
 
 class SdrNeural extends AgenteBase {
   constructor(db) {
     super(db, 'sdr_neural');
-    this.timeoutMs = 60000;
+    this.timeoutMs = 120000;
+    this.copywriter = new Copywriter(db);
   }
 
   async execute(input = {}) {
-    const modo = input.modo || 'followup';
-    let conversas;
+    const modo = input.modo || 'auto';
+    const stats = { followups: 0, respostas: 0, aprovacao: 0, rate_limit: 0, erros: 0 };
 
-    if (input.conversa_ids && input.conversa_ids.length) {
-      const placeholders = input.conversa_ids.map(() => '?').join(',');
-      conversas = this.db.prepare(`
-        SELECT c.*, l.razao_social, l.nicho FROM conversas c
-        JOIN leads l ON l.id = c.lead_id
-        WHERE c.id IN (${placeholders})
-      `).all(...input.conversa_ids);
-    } else if (modo === 'followup') {
-      conversas = this.db.prepare(`
-        SELECT c.*, l.razao_social, l.nicho FROM conversas c
-        JOIN leads l ON l.id = c.lead_id
-        WHERE c.status = 'aguardando_resposta'
-          AND c.ultimo_msg < datetime('now', '-1 day')
-          AND c.followups_count < 3
-        LIMIT 10
-      `).all();
-    } else {
-      conversas = [];
+    if (modo === 'auto' || modo === 'followup') {
+      await this._processarFollowups(stats);
+    }
+    if (modo === 'auto' || modo === 'resposta') {
+      await this._processarRespostas(stats);
     }
 
-    if (conversas.length === 0) return { processadas: 0, mensagem: 'Nada pendente pra SDR.' };
-
-    const stats = { processadas: 0, geradas: 0, dryrun: 0 };
-
-    for (const c of conversas) {
-      const tentativaN = c.followups_count || 0;
-      let mensagem;
-
-      if (process.env.GEMINI_API_KEY) {
-        try {
-          mensagem = await this._gerarComGemini(c, tentativaN);
-          stats.geradas++;
-        } catch (e) {
-          console.warn(`[sdr_neural] Gemini falhou: ${e.message}`);
-          mensagem = TEMPLATE_FOLLOWUP[Math.min(tentativaN, TEMPLATE_FOLLOWUP.length - 1)];
-        }
-      } else {
-        mensagem = TEMPLATE_FOLLOWUP[Math.min(tentativaN, TEMPLATE_FOLLOWUP.length - 1)];
-      }
-
-      // Registra em conversas (dry-run — envio real depende de integração WhatsApp/Email)
-      this.db.prepare(`
-        INSERT INTO conversas (lead_id, canal, direcao, mensagem, agente_origem, status, ultimo_msg)
-        VALUES (?, ?, 'enviada', ?, 'sdr_neural_dryrun', 'aguardando_resposta', CURRENT_TIMESTAMP)
-      `).run(c.lead_id, c.canal || 'email', mensagem);
-
-      // Atualiza contador da conversa original
-      this.db.prepare(`
-        UPDATE conversas SET followups_count = followups_count + 1, ultimo_msg = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(c.id);
-
-      stats.processadas++;
-      stats.dryrun++;
-    }
-
-    stats.aviso = 'Mensagens em dry-run — integração WhatsApp/Email send precisa de chave configurada.';
     return stats;
   }
 
-  async _gerarComGemini(conversa, tentativaN) {
-    const prompt = `Você é SDR enxuto, brasileiro, tom executivo e direto (sem chavão, sem emoji).
-Lead: ${conversa.razao_social || 'empresa'} (${conversa.nicho || 'segmento não classificado'})
-Mensagem original enviada: "${conversa.mensagem.slice(0, 400)}"
-Follow-up número ${tentativaN + 1} de 3. Não soar desesperado, não repetir o pitch — só puxar resposta.
-Máximo 3 linhas. Devolva APENAS o texto da mensagem, sem comentários.`;
+  async _processarFollowups(stats) {
+    const pendentes = this.db.prepare(`
+      SELECT f.*, l.razao_social, l.nicho, l.cliente_slug, l.email, l.cnpj
+      FROM followups f
+      JOIN leads l ON l.id = f.lead_id
+      WHERE f.status = 'pendente' AND f.agendado_para <= datetime('now')
+      LIMIT 30
+    `).all();
 
-    const res = await fetch(`${GEMINI_API}?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 200 },
-      }),
-    });
+    for (const f of pendentes) {
+      const clienteSlug = f.cliente_slug || 'l2-automation';
+      const cliente = this.db.prepare('SELECT * FROM clientes WHERE slug = ?').get(clienteSlug);
+      const lead = this.db.prepare('SELECT * FROM leads WHERE id = ?').get(f.lead_id);
 
-    if (!res.ok) throw new Error(`Gemini ${res.status}`);
-    const data = await res.json();
-    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return texto.trim().replace(/^"|"$/g, '') || TEMPLATE_FOLLOWUP[tentativaN];
+      // Lead já respondeu? cancela tudo
+      if (lead.status === 'respondeu' || lead.status === 'qualificado' || lead.status === 'reuniao') {
+        this.db.prepare(`UPDATE followups SET status='cancelado' WHERE id=?`).run(f.id);
+        continue;
+      }
+
+      // Rate limit
+      const rateChave = `sdr_neural:${clienteSlug}`;
+      const limite = cliente?.rate_limit_diario || 50;
+      const rl = checarRateLimit(this.db, rateChave, limite);
+      if (!rl.permitido) { stats.rate_limit++; break; }
+
+      // Gera follow-up
+      let copy;
+      try {
+        copy = await this.copywriter.execute({ lead, canal: f.canal, tentativa: f.tentativa + 1 });
+      } catch (e) {
+        stats.erros++;
+        continue;
+      }
+
+      // Aprovação?
+      if (!cliente?.auto_pilot || copy.confianca < CONFIANCA_MINIMA) {
+        this.db.prepare(`
+          INSERT INTO aprovacoes (lead_id, conversa_id, agente_origem, canal, assunto, mensagem, confianca, motivo_aprovacao)
+          VALUES (?, ?, 'sdr_neural', ?, ?, ?, ?, 'followup pendente aprovacao')
+        `).run(f.lead_id, f.conversa_id, f.canal, copy.assunto || '', copy.corpo, copy.confianca);
+        this.db.prepare(`UPDATE followups SET status='enviado', executado_em=CURRENT_TIMESTAMP WHERE id=?`).run(f.id);
+        stats.aprovacao++;
+        continue;
+      }
+
+      // Envia (email por enquanto; whatsapp/linkedin dry-run)
+      const enviado = await this._enviar(lead, copy, f.canal);
+
+      this.db.prepare(`
+        INSERT INTO conversas (lead_id, canal, direcao, mensagem, assunto, agente_origem, status, ultimo_msg, template_id)
+        VALUES (?, ?, 'enviada', ?, ?, ?, 'aguardando_resposta', CURRENT_TIMESTAMP, ?)
+      `).run(
+        f.lead_id, f.canal, copy.corpo, copy.assunto || '',
+        enviado ? 'sdr_neural' : 'sdr_neural_dryrun', copy.framework_usado,
+      );
+
+      this.db.prepare(`UPDATE followups SET status='enviado', executado_em=CURRENT_TIMESTAMP WHERE id=?`).run(f.id);
+      this.db.prepare(`UPDATE leads SET ultimo_outbound=CURRENT_TIMESTAMP WHERE id=?`).run(f.lead_id);
+      if (enviado) consumirRateLimit(this.db, rateChave, limite);
+      stats.followups++;
+    }
+  }
+
+  async _processarRespostas(stats) {
+    // Conversas com mensagem recebida não respondida pelo sistema
+    const inbound = this.db.prepare(`
+      SELECT c.*, l.razao_social, l.nicho, l.cliente_slug
+      FROM conversas c
+      JOIN leads l ON l.id = c.lead_id
+      WHERE c.direcao = 'recebida'
+        AND c.id NOT IN (
+          SELECT COALESCE(c2.id, -1) FROM conversas c2
+          WHERE c2.lead_id = c.lead_id AND c2.direcao = 'enviada' AND c2.timestamp > c.timestamp
+        )
+      ORDER BY c.timestamp DESC LIMIT 10
+    `).all();
+
+    for (const msg of inbound) {
+      const lead = this.db.prepare('SELECT * FROM leads WHERE id = ?').get(msg.lead_id);
+      const cliente = this.db.prepare('SELECT * FROM clientes WHERE slug = ?').get(lead.cliente_slug || 'l2-automation');
+
+      // Atualiza status do lead pra 'respondeu' (se ainda não tava)
+      if (lead.status === 'contatado') {
+        this.db.prepare(`
+          UPDATE leads SET status='respondeu', data_resposta=CURRENT_TIMESTAMP WHERE id=?
+        `).run(lead.id);
+      }
+
+      // Cancela followups pendentes (já respondeu)
+      cancelarFollowupsPendentes(this.db, lead.id);
+
+      // Resposta de continuação SEMPRE vai pra aprovação humana (alto risco mandar besteira)
+      let copy;
+      try {
+        copy = await this.copywriter.execute({
+          lead, canal: msg.canal,
+          tentativa: 1, // tom de continuação, não followup
+        });
+      } catch (e) { stats.erros++; continue; }
+
+      this.db.prepare(`
+        INSERT INTO aprovacoes (lead_id, conversa_id, agente_origem, canal, assunto, mensagem, confianca, motivo_aprovacao)
+        VALUES (?, ?, 'sdr_neural', ?, ?, ?, ?, 'lead respondeu, sugestao de continuacao')
+      `).run(lead.id, msg.id, msg.canal, copy.assunto || '', copy.corpo, copy.confianca);
+
+      // Marca conversa recebida como "tratada"
+      this.db.prepare(`UPDATE conversas SET status='respondida' WHERE id=?`).run(msg.id);
+      this.emitirEvento('lead_respondeu', { lead_id: lead.id, conversa_id: msg.id });
+      stats.respostas++;
+    }
+  }
+
+  async _enviar(lead, copy, canal) {
+    if (canal !== 'email' || !process.env.RESEND_API_KEY) return false;
+    try {
+      const res = await fetch(RESEND_API, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: `${FROM_NAME} <${FROM_EMAIL}>`,
+          to: [lead.email],
+          subject: copy.assunto,
+          text: copy.corpo,
+          headers: { 'X-Lead-Id': String(lead.id) },
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 }
 

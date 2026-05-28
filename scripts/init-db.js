@@ -9,6 +9,69 @@ const path = require('path');
 const DB_PATH = process.env.DB_PATH || './data/l2.db';
 const SCHEMA_PATH = path.join(__dirname, '../db/schema.sql');
 
+// Cliente default (L2 vendendo pra si própria)
+const CLIENTES_BASE = [
+  {
+    slug: 'l2-automation',
+    nome: 'L2 Automation',
+    email_contato: 'levi@l2automation.com.br',
+    auto_pilot: 0, // por segurança, começa OFF (toda msg vai pra aprovação)
+    nicho_alvo: 'imobiliaria',
+    dna_resumo: 'L2 Automation — sistema autônomo de prospecção e venda B2B. Substitui SDR caro por agentes IA que rodam 24/7.',
+    plano: 'enterprise',
+    rate_limit_diario: 100,
+  },
+];
+
+// Personas por nicho (copy switcher)
+const PERSONAS_BASE = [
+  {
+    nicho: 'imobiliaria',
+    label: 'Imobiliária / Corretor',
+    dor_principal: 'depender de captação ativa via WhatsApp e Instagram pra fechar venda',
+    ganho_prometido: 'fluxo previsível de leads quentes qualificados sem precisar de SDR humano',
+    tom: 'executivo direto, fala em volume de leads e ROI',
+    abertura_template: 'Vi que a {razao} atua em {cidade} — quantos leads vocês recebem por mês hoje?',
+  },
+  {
+    nicho: 'saude',
+    label: 'Clínica / Consultório',
+    dor_principal: 'agenda com buracos e dependência de indicação boca-a-boca',
+    ganho_prometido: 'agenda cheia e previsível com pacientes do perfil certo',
+    tom: 'consultivo, foco em qualidade de paciente não só volume',
+    abertura_template: 'Como vocês de {razao} estão recebendo pacientes novos hoje?',
+  },
+  {
+    nicho: 'advocacia',
+    label: 'Escritório de Advocacia',
+    dor_principal: 'dependência de indicação e dificuldade de prospectar sem parecer antiético',
+    ganho_prometido: 'fluxo ético e previsível de clientes corporativos no perfil',
+    tom: 'sóbrio, técnico, sem sensacionalismo',
+    abertura_template: '{razao} — vocês prospectam ativamente ou trabalham só por indicação hoje?',
+  },
+  {
+    nicho: 'consultoria',
+    label: 'Consultoria',
+    dor_principal: 'ciclo longo de venda e dificuldade de prospectar decisores C-level',
+    ganho_prometido: 'pipeline com decisores C-level qualificados',
+    tom: 'estratégico, fala em transformação de negócio',
+    abertura_template: 'Como a {razao} prospecta novos contratos hoje?',
+  },
+];
+
+// Nicho alvo de exemplo pra L2 (imobiliárias EPP no RS/SC)
+const NICHOS_ALVO_BASE = [
+  {
+    cliente_slug: 'l2-automation',
+    nome: 'Imobiliárias SUL — EPP/ME',
+    cnae_filtros: JSON.stringify(['6810', '6822']),
+    uf_filtros: JSON.stringify(['RS', 'SC', 'PR']),
+    porte_filtros: JSON.stringify(['EPP', 'ME', 'DEMAIS']),
+    capital_min: 50000,
+    cnaes_excluir: null,
+  },
+];
+
 // Agentes do sistema L2 (definição declarativa)
 const AGENTES_BASE = [
   {
@@ -67,10 +130,32 @@ const AGENTES_BASE = [
     cron_expr: '*/15 * * * *', // 15 min
     cron_ativo: 1,
   },
+  {
+    nome: 'cnpj_finder',
+    label: 'CNPJ Finder',
+    descricao: 'Busca CNPJs novos por filtros ICP (CNAE+UF+porte) via Casa dos Dados.',
+    cron_expr: '0 8 * * 1-5', // 8h dia útil, antes do prospector
+    cron_ativo: 1,
+  },
+  {
+    nome: 'copywriter',
+    label: 'Copywriter',
+    descricao: 'Gera copy personalizada por lead usando persona + Cerebro de Persuasao.',
+    cron_expr: null, // event-driven
+    cron_ativo: 0,
+  },
+  {
+    nome: 'backup',
+    label: 'Backup',
+    descricao: 'Hot-backup do SQLite diario com rotacao de 14 dias.',
+    cron_expr: '0 3 * * *', // 3h da manha
+    cron_ativo: 1,
+  },
 ];
 
 function seed(db) {
-  const upsert = db.prepare(`
+  // Agentes
+  const upsertAg = db.prepare(`
     INSERT INTO agentes (nome, label, descricao, status, cron_expr, cron_ativo)
     VALUES (@nome, @label, @descricao, 'aguardando', @cron_expr, @cron_ativo)
     ON CONFLICT(nome) DO UPDATE SET
@@ -80,8 +165,39 @@ function seed(db) {
       cron_ativo = excluded.cron_ativo,
       updated_at = CURRENT_TIMESTAMP
   `);
-  for (const ag of AGENTES_BASE) upsert.run(ag);
-  console.log(`[init-db] ${AGENTES_BASE.length} agentes registrados/atualizados`);
+  for (const ag of AGENTES_BASE) upsertAg.run(ag);
+
+  // Clientes (não sobrescreve auto_pilot/plano existente)
+  const upsertCli = db.prepare(`
+    INSERT INTO clientes (slug, nome, email_contato, auto_pilot, nicho_alvo, dna_resumo, plano, rate_limit_diario)
+    VALUES (@slug, @nome, @email_contato, @auto_pilot, @nicho_alvo, @dna_resumo, @plano, @rate_limit_diario)
+    ON CONFLICT(slug) DO NOTHING
+  `);
+  for (const c of CLIENTES_BASE) upsertCli.run(c);
+
+  // Personas (sempre atualiza)
+  const upsertP = db.prepare(`
+    INSERT INTO personas (nicho, label, dor_principal, ganho_prometido, tom, abertura_template)
+    VALUES (@nicho, @label, @dor_principal, @ganho_prometido, @tom, @abertura_template)
+    ON CONFLICT(nicho) DO UPDATE SET
+      label = excluded.label,
+      dor_principal = excluded.dor_principal,
+      ganho_prometido = excluded.ganho_prometido,
+      tom = excluded.tom,
+      abertura_template = excluded.abertura_template,
+      updated_at = CURRENT_TIMESTAMP
+  `);
+  for (const p of PERSONAS_BASE) upsertP.run(p);
+
+  // Nichos alvo — só insere se não existir nome igual pro mesmo cliente
+  const insNa = db.prepare(`
+    INSERT INTO nichos_alvo (cliente_slug, nome, cnae_filtros, uf_filtros, porte_filtros, capital_min, cnaes_excluir, ativo)
+    SELECT @cliente_slug, @nome, @cnae_filtros, @uf_filtros, @porte_filtros, @capital_min, @cnaes_excluir, 1
+    WHERE NOT EXISTS (SELECT 1 FROM nichos_alvo WHERE cliente_slug = @cliente_slug AND nome = @nome)
+  `);
+  for (const n of NICHOS_ALVO_BASE) insNa.run(n);
+
+  console.log(`[init-db] seed OK — ${AGENTES_BASE.length} agentes, ${CLIENTES_BASE.length} clientes, ${PERSONAS_BASE.length} personas, ${NICHOS_ALVO_BASE.length} nichos alvo`);
 }
 
 module.exports = { seed, AGENTES_BASE };

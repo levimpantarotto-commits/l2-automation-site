@@ -75,8 +75,15 @@ CREATE TABLE IF NOT EXISTS leads (
   data_resposta TIMESTAMP,
   status TEXT DEFAULT 'novo',        -- novo | enriquecido | contatado | respondeu | qualificado | reuniao | cliente | descartado | negado
   score INTEGER,                     -- 0-100 (BANT score)
+  bant_budget INTEGER,               -- 0-25
+  bant_authority INTEGER,            -- 0-25
+  bant_need INTEGER,                 -- 0-25
+  bant_timeline INTEGER,             -- 0-25
+  bant_detalhe TEXT,                 -- JSON com justificativa
+  cliente_slug TEXT,                 -- multi-tenant: lead pertence a qual cliente da L2
   origem TEXT,                       -- prospector | manual | integracao | indicacao
   nicho TEXT,                        -- imobiliaria | clinica | etc
+  ultimo_outbound TIMESTAMP,         -- pra dedup 90 dias
   metadata TEXT                      -- JSON
 );
 
@@ -147,3 +154,146 @@ CREATE TABLE IF NOT EXISTS eventos (
 );
 
 CREATE INDEX IF NOT EXISTS idx_eventos_pendentes ON eventos(processado, created_at) WHERE processado = 0;
+
+-- ============================================================
+-- CLIENTES — multi-tenant (a L2 vende pra várias empresas)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS clientes (
+  slug TEXT PRIMARY KEY,            -- 'l2-automation', 'igor-imoveis', etc
+  nome TEXT NOT NULL,
+  email_contato TEXT,
+  whatsapp_contato TEXT,
+  ativo INTEGER DEFAULT 1,
+  auto_pilot INTEGER DEFAULT 0,     -- se 1, agentes mandam sem aprovação humana
+  nicho_alvo TEXT,                  -- nicho de leads que esse cliente quer (ex: imobiliaria)
+  dna_resumo TEXT,                  -- DNA condensado (tom, dor, oferta)
+  dna_completo TEXT,                -- DNA expandido
+  vault_folder TEXT,                -- pasta no Obsidian quando sincronizar
+  plano TEXT DEFAULT 'trial',       -- trial | starter | pro | enterprise
+  cobranca_status TEXT DEFAULT 'ativo', -- ativo | atrasado | suspenso | cancelado
+  rate_limit_diario INTEGER DEFAULT 50, -- max outbound/dia
+  config TEXT,                      -- JSON com customizações
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- NICHOS_ALVO — filtros ICP (Ideal Customer Profile)
+-- Cada cliente define o que é "lead bom" pra ele
+-- ============================================================
+CREATE TABLE IF NOT EXISTS nichos_alvo (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cliente_slug TEXT NOT NULL,
+  nome TEXT NOT NULL,               -- "Imobiliárias médias RS"
+  cnae_filtros TEXT,                -- JSON array ['6810%','6822%']
+  uf_filtros TEXT,                  -- JSON array ['RS','SC']
+  porte_filtros TEXT,               -- JSON array ['EPP','ME','DEMAIS']
+  capital_min REAL,                 -- ex: 100000
+  capital_max REAL,
+  cidade_filtros TEXT,              -- JSON array opcional
+  cnaes_excluir TEXT,               -- JSON array de CNAEs proibidos
+  ativo INTEGER DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cliente_slug) REFERENCES clientes(slug)
+);
+
+-- ============================================================
+-- PERSONAS — copy/tom por nicho (persona switcher)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS personas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nicho TEXT NOT NULL UNIQUE,       -- 'imobiliaria', 'saude', etc
+  label TEXT NOT NULL,
+  dor_principal TEXT,
+  ganho_prometido TEXT,
+  tom TEXT,                         -- 'executivo' | 'consultivo' | 'tecnico'
+  abertura_template TEXT,           -- template de abertura
+  ganchos TEXT,                     -- JSON array de ganchos testados
+  exemplos_concretos TEXT,          -- JSON array de casos
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- CEREBRO_ARQUIVOS — Cérebro de Persuasão embarcado (vault privado)
+-- Conteúdo NÃO vai no git. Sobe via /api/cerebro/upload (auth).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS cerebro_arquivos (
+  slug TEXT PRIMARY KEY,            -- 'kahneman', 'damasio', 'sobral_anuncios'
+  titulo TEXT NOT NULL,
+  fonte TEXT,                       -- 'livro' | 'video' | 'curso'
+  conteudo_md TEXT NOT NULL,        -- markdown completo
+  resumo_curto TEXT,                -- 1-2 parágrafos (cabe no prompt)
+  tags TEXT,                        -- JSON array
+  tamanho_bytes INTEGER,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
+-- APROVACOES — fila de mensagens pendente OK do humano
+-- ============================================================
+CREATE TABLE IF NOT EXISTS aprovacoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lead_id INTEGER,
+  conversa_id INTEGER,
+  agente_origem TEXT NOT NULL,
+  canal TEXT NOT NULL,
+  assunto TEXT,
+  mensagem TEXT NOT NULL,
+  confianca REAL,                   -- 0-1 (quão certo o agente está)
+  motivo_aprovacao TEXT,            -- por que precisa de humano
+  status TEXT DEFAULT 'pendente',   -- pendente | aprovada | editada | rejeitada
+  decidido_por TEXT,
+  decidido_em TIMESTAMP,
+  mensagem_final TEXT,              -- se humano editou
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (lead_id) REFERENCES leads(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_aprovacoes_status ON aprovacoes(status, created_at);
+
+-- ============================================================
+-- RATE_LIMITS — contador por canal/dia pra anti-spam
+-- ============================================================
+CREATE TABLE IF NOT EXISTS rate_limits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  chave TEXT NOT NULL,              -- ex: 'outbound_email:2026-05-28' ou 'whatsapp:5551999'
+  contador INTEGER DEFAULT 0,
+  limite INTEGER,
+  janela_fim TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rate_limits_chave ON rate_limits(chave);
+
+-- ============================================================
+-- FOLLOWUPS — agenda de follow-ups (D+3, D+7, D+15)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS followups (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lead_id INTEGER NOT NULL,
+  conversa_id INTEGER,
+  agendado_para TIMESTAMP NOT NULL,
+  tentativa INTEGER DEFAULT 1,      -- 1, 2 ou 3
+  canal TEXT NOT NULL,
+  template_id TEXT,
+  status TEXT DEFAULT 'pendente',   -- pendente | enviado | cancelado (lead respondeu)
+  executado_em TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (lead_id) REFERENCES leads(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_followups_pendentes ON followups(status, agendado_para);
+
+-- ============================================================
+-- BACKUPS_LOG — histórico de backups do SQLite
+-- ============================================================
+CREATE TABLE IF NOT EXISTS backups_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  arquivo TEXT NOT NULL,
+  tamanho_bytes INTEGER,
+  destino TEXT,                     -- 'local' | 's3' | 'b2'
+  sucesso INTEGER DEFAULT 1,
+  erro TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

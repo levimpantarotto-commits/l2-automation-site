@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>L2 Automation · Inbox de Aprovações</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root {
+    --bg: #000;
+    --surface-1: #0d0d0d;
+    --surface-2: #161616;
+    --border: rgba(212,175,55,0.18);
+    --accent: #E6BE48;
+    --accent-deep: #8B6F1F;
+    --text: #fdfdfd;
+    --text-2: #b8b8b8;
+    --text-3: #777;
+    --success: #00ff88;
+    --err: #ff3366;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter Tight', 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    background-image:
+      linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px);
+    background-size: 80px 80px;
+    min-height: 100vh;
+    padding: 32px;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 32px;
+  }
+  h1 {
+    font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .badge {
+    background: rgba(230,190,72,0.12); border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 4px; font-size: 11px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--accent); font-weight: 700;
+  }
+  .stats { display: flex; gap: 24px; margin-bottom: 32px; }
+  .stat {
+    flex: 1; background: var(--surface-1); border: 1px solid var(--border);
+    padding: 20px 24px; border-radius: 6px;
+  }
+  .stat-label { font-size: 10px; letter-spacing: 0.25em; color: var(--text-3); text-transform: uppercase; font-weight: 700; }
+  .stat-value { font-size: 2.5rem; font-weight: 800; color: var(--accent); margin-top: 8px; letter-spacing: -0.03em; }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+  }
+  .card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
+  .lead-name { font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em; }
+  .meta { display: flex; gap: 16px; font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; }
+  .meta span strong { color: var(--accent); }
+  .assunto { font-weight: 700; font-size: 1rem; margin: 12px 0 8px; color: var(--text); }
+  textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 16px; border-radius: 4px; font-family: inherit;
+    font-size: 13px; line-height: 1.6; min-height: 140px; resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .actions { display: flex; gap: 12px; margin-top: 16px; justify-content: flex-end; }
+  button {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+    padding: 10px 24px; cursor: pointer; border-radius: 4px; font-family: inherit;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-aprovar { border-color: var(--success); color: var(--success); }
+  .btn-aprovar:hover { background: rgba(0,255,136,0.1); }
+  .btn-rejeitar { border-color: var(--err); color: var(--err); }
+  .btn-rejeitar:hover { background: rgba(255,51,102,0.1); }
+  .empty {
+    text-align: center; padding: 80px 20px; color: var(--text-3);
+    font-size: 1.1rem; letter-spacing: 0.05em;
+  }
+  .empty::before { content: '○'; display: block; font-size: 4rem; color: var(--accent-deep); margin-bottom: 16px; }
+  .confianca {
+    display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.08em;
+  }
+  .conf-alta { background: rgba(0,255,136,0.15); color: var(--success); }
+  .conf-media { background: rgba(255,184,0,0.15); color: #ffb800; }
+  .conf-baixa { background: rgba(255,51,102,0.15); color: var(--err); }
+  nav.top { display: flex; gap: 8px; margin-bottom: 32px; }
+  nav.top a {
+    color: var(--text-3); text-decoration: none; padding: 8px 14px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700;
+    border: 1px solid transparent;
+  }
+  nav.top a:hover { color: var(--accent); border-color: var(--border); }
+  nav.top a.active { color: var(--text); background: var(--surface-1); border-color: var(--border); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Inbox · Aprovações</h1>
+    <p style="color: var(--text-3); margin-top: 6px; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;">Mensagens geradas por agentes aguardando OK humano</p>
+  </div>
+  <span class="badge">L2 Automation</span>
+</header>
+
+<nav class="top">
+  <a href="#pendente" data-status="pendente" class="active">Pendentes</a>
+  <a href="#aprovada" data-status="aprovada">Aprovadas</a>
+  <a href="#editada" data-status="editada">Editadas</a>
+  <a href="#rejeitada" data-status="rejeitada">Rejeitadas</a>
+  <a href="/admin/" style="margin-left: auto;">← Voltar ao painel</a>
+</nav>
+
+<section class="stats">
+  <div class="stat">
+    <div class="stat-label">Pendentes</div>
+    <div class="stat-value" id="stat-pendente">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Aprovadas hoje</div>
+    <div class="stat-value" id="stat-aprovadas">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Confiança média</div>
+    <div class="stat-value" id="stat-conf">—</div>
+  </div>
+</section>
+
+<main id="lista"></main>
+
+<script>
+let statusAtual = 'pendente';
+
+function confClass(c) {
+  if (c >= 0.7) return 'conf-alta';
+  if (c >= 0.5) return 'conf-media';
+  return 'conf-baixa';
+}
+
+async function carregar() {
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '<div class="empty">Carregando...</div>';
+
+  const r = await fetch('/api/aprovacoes?status=' + statusAtual);
+  const data = await r.json();
+  const aprovs = data.aprovacoes || [];
+
+  document.getElementById('stat-pendente').textContent = aprovs.length;
+
+  if (aprovs.length === 0) {
+    lista.innerHTML = '<div class="empty">Nada ' + statusAtual + '. Sistema rodando lindo.</div>';
+    return;
+  }
+
+  const avg = aprovs.reduce((s, a) => s + (a.confianca || 0), 0) / aprovs.length;
+  document.getElementById('stat-conf').textContent = (avg * 100).toFixed(0) + '%';
+
+  lista.innerHTML = aprovs.map(a => `
+    <div class="card" data-id="${a.id}">
+      <div class="card-head">
+        <div>
+          <div class="lead-name">${a.razao_social || 'Lead #' + a.lead_id}</div>
+          <div class="meta" style="margin-top: 6px;">
+            <span>Canal: <strong>${a.canal}</strong></span>
+            <span>Agente: <strong>${a.agente_origem}</strong></span>
+            <span>Nicho: <strong>${a.nicho || '—'}</strong></span>
+            <span class="confianca ${confClass(a.confianca)}">${(a.confianca * 100).toFixed(0)}% confiança</span>
+          </div>
+        </div>
+        <div style="font-size: 10px; color: var(--text-3); letter-spacing: 0.1em;">
+          ${new Date(a.created_at).toLocaleString('pt-BR')}
+        </div>
+      </div>
+      ${a.assunto ? `<div class="assunto">📧 ${a.assunto}</div>` : ''}
+      <textarea id="msg-${a.id}">${a.mensagem}</textarea>
+      ${statusAtual === 'pendente' ? `
+        <div class="actions">
+          <button class="btn-rejeitar" onclick="decidir(${a.id}, 'rejeitar')">Rejeitar</button>
+          <button onclick="decidir(${a.id}, 'editar')">Editar e Enviar</button>
+          <button class="btn-aprovar" onclick="decidir(${a.id}, 'aprovar')">Aprovar Como Está</button>
+        </div>
+      ` : `
+        <div style="margin-top: 12px; font-size: 11px; color: var(--text-3); letter-spacing: 0.1em; text-transform: uppercase;">
+          Decisão: ${a.status} ${a.decidido_em ? '· ' + new Date(a.decidido_em).toLocaleString('pt-BR') : ''}
+        </div>
+      `}
+    </div>
+  `).join('');
+}
+
+async function decidir(id, decisao) {
+  const textarea = document.getElementById('msg-' + id);
+  const body = { decisao };
+  if (decisao === 'editar') body.mensagem_final = textarea.value;
+
+  const r = await fetch(`/api/aprovacoes/${id}/decidir`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (r.ok) {
+    document.querySelector(`[data-id="${id}"]`).style.opacity = 0.3;
+    setTimeout(carregar, 600);
+  } else {
+    alert('Erro: ' + r.status);
+  }
+}
+
+document.querySelectorAll('nav.top a[data-status]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelectorAll('nav.top a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    statusAtual = a.dataset.status;
+    carregar();
+  });
+});
+
+carregar();
+setInterval(carregar, 30000); // refresh 30s
+</script>
+</body>
+</html>

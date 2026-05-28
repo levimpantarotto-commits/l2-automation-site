@@ -34,6 +34,13 @@ tryAddColumn('conversas', 'status', "TEXT DEFAULT 'aberta'");
 tryAddColumn('conversas', 'ultimo_msg', 'TIMESTAMP');
 tryAddColumn('conversas', 'followups_count', 'INTEGER DEFAULT 0');
 tryAddColumn('failures', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+tryAddColumn('leads', 'bant_budget', 'INTEGER');
+tryAddColumn('leads', 'bant_authority', 'INTEGER');
+tryAddColumn('leads', 'bant_need', 'INTEGER');
+tryAddColumn('leads', 'bant_timeline', 'INTEGER');
+tryAddColumn('leads', 'bant_detalhe', 'TEXT');
+tryAddColumn('leads', 'cliente_slug', 'TEXT');
+tryAddColumn('leads', 'ultimo_outbound', 'TIMESTAMP');
 
 // Auto-popula/atualiza agentes (idempotente — roda sempre pra refletir mudanças do código)
 try {
@@ -61,6 +68,8 @@ const AUTH_PASS = process.env.BASIC_AUTH_PASS || 'troqueme';
 function basicAuth(req, res, next) {
   // /api/saude sempre aberto (Coolify healthcheck precisa)
   if (req.path === '/api/saude') return next();
+  // Webhooks externos (Resend/Stripe/etc) precisam acesso sem Basic Auth
+  if (req.path.startsWith('/webhook/')) return next();
   // Site marketing aberto (estáticos da raiz, /blog, etc)
   if (!req.path.startsWith('/admin') && !req.path.startsWith('/api')) return next();
 
@@ -89,6 +98,9 @@ PASTAS_PUBLICAS.forEach(p => {
   if (fs.existsSync(dir)) app.use(`/${p}`, express.static(dir, { maxAge: '7d' }));
 });
 
+// Alias amigável /admin/inbox -> inbox.html (precisa estar ANTES do SPA fallback)
+app.get('/admin/inbox', (req, res) => res.sendFile(path.join(__dirname, 'inbox.html')));
+
 // Painel admin — dashboard React buildado pelo Vite (public/admin/)
 // Fallback: admin/index.html simples (legacy) caso dashboard não esteja buildado
 const adminBuilt = path.join(__dirname, 'public/admin');
@@ -103,7 +115,7 @@ if (fs.existsSync(adminBuilt)) {
 // HTML/recursos da raiz (whitelist explícita)
 const ARQS_RAIZ = [
   'index.html', 'avatares-teste.html', 'escritorio-3d-teste.html', 'escritorioteste.html',
-  'sitemap.xml', 'robots.txt', 'logo.svg',
+  'sitemap.xml', 'robots.txt', 'logo.svg', 'inbox.html',
 ];
 ARQS_RAIZ.forEach(arq => {
   const file = path.join(__dirname, arq);
@@ -363,6 +375,328 @@ app.post('/api/maestro', (req, res) => {
   }
 
   res.json({ response: `comando desconhecido: "${cmd}". Digite "help".` });
+});
+
+// ============================================================
+// CEREBRO DE PERSUASAO — upload/listagem (auth obrigatorio)
+// Vault privado do Levi nao vai pro git. Sobe via API e fica no volume /data.
+// ============================================================
+app.get('/api/cerebro', (req, res) => {
+  const arquivos = db.prepare(`
+    SELECT slug, titulo, fonte, tamanho_bytes, updated_at,
+           length(conteudo_md) AS chars
+    FROM cerebro_arquivos ORDER BY slug
+  `).all();
+  res.json({ arquivos, total: arquivos.length });
+});
+
+app.get('/api/cerebro/:slug', (req, res) => {
+  const a = db.prepare('SELECT * FROM cerebro_arquivos WHERE slug = ?').get(req.params.slug);
+  if (!a) return res.status(404).json({ error: 'nao encontrado' });
+  res.json(a);
+});
+
+app.post('/api/cerebro/upload', (req, res) => {
+  const { slug, titulo, fonte, conteudo_md, resumo_curto, tags } = req.body || {};
+  if (!slug || !titulo || !conteudo_md) return res.status(400).json({ error: 'slug, titulo e conteudo_md obrigatorios' });
+
+  db.prepare(`
+    INSERT INTO cerebro_arquivos (slug, titulo, fonte, conteudo_md, resumo_curto, tags, tamanho_bytes, updated_at)
+    VALUES (@slug, @titulo, @fonte, @conteudo_md, @resumo_curto, @tags, @tamanho_bytes, CURRENT_TIMESTAMP)
+    ON CONFLICT(slug) DO UPDATE SET
+      titulo = excluded.titulo,
+      fonte = excluded.fonte,
+      conteudo_md = excluded.conteudo_md,
+      resumo_curto = excluded.resumo_curto,
+      tags = excluded.tags,
+      tamanho_bytes = excluded.tamanho_bytes,
+      updated_at = CURRENT_TIMESTAMP
+  `).run({
+    slug, titulo, fonte: fonte || 'manual', conteudo_md,
+    resumo_curto: resumo_curto || conteudo_md.slice(0, 1500),
+    tags: tags ? JSON.stringify(tags) : null,
+    tamanho_bytes: Buffer.byteLength(conteudo_md, 'utf-8'),
+  });
+  res.json({ success: true, slug });
+});
+
+app.delete('/api/cerebro/:slug', (req, res) => {
+  const r = db.prepare('DELETE FROM cerebro_arquivos WHERE slug = ?').run(req.params.slug);
+  res.json({ success: true, removidos: r.changes });
+});
+
+// ============================================================
+// APROVACOES — fila de mensagens pendente OK do humano
+// ============================================================
+app.get('/api/aprovacoes', (req, res) => {
+  const status = req.query.status || 'pendente';
+  const aprovacoes = db.prepare(`
+    SELECT a.*, l.razao_social, l.email, l.nicho
+    FROM aprovacoes a
+    LEFT JOIN leads l ON l.id = a.lead_id
+    WHERE a.status = ?
+    ORDER BY a.created_at DESC LIMIT 100
+  `).all(status);
+  res.json({ aprovacoes });
+});
+
+app.post('/api/aprovacoes/:id/decidir', async (req, res) => {
+  const { decisao, mensagem_final, decidido_por } = req.body || {};
+  // decisao: 'aprovar' | 'editar' | 'rejeitar'
+  const apr = db.prepare('SELECT * FROM aprovacoes WHERE id = ?').get(req.params.id);
+  if (!apr) return res.status(404).json({ error: 'aprovacao nao encontrada' });
+  if (apr.status !== 'pendente') return res.status(400).json({ error: 'ja decidida' });
+
+  if (decisao === 'rejeitar') {
+    db.prepare(`UPDATE aprovacoes SET status='rejeitada', decidido_por=?, decidido_em=CURRENT_TIMESTAMP WHERE id=?`)
+      .run(decidido_por || 'admin', req.params.id);
+    return res.json({ success: true, decisao: 'rejeitada' });
+  }
+
+  // aprovar ou editar: dispara envio real
+  const msgFinal = (decisao === 'editar' && mensagem_final) ? mensagem_final : apr.mensagem;
+  const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(apr.lead_id);
+
+  let enviado = false;
+  if (apr.canal === 'email' && process.env.RESEND_API_KEY && lead?.email) {
+    try {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: `${process.env.OUTBOUND_FROM_NAME || 'Levi · L2 Automation'} <${process.env.OUTBOUND_FROM_EMAIL || 'levi@l2automation.com.br'}>`,
+          to: [lead.email],
+          subject: apr.assunto,
+          text: msgFinal,
+          headers: { 'X-Lead-Id': String(apr.lead_id), 'X-Aprovacao': String(apr.id) },
+        }),
+      });
+      enviado = r.ok;
+    } catch (e) {
+      console.warn('[aprovacoes/decidir]', e.message);
+    }
+  }
+
+  // Atualiza aprovacao
+  db.prepare(`
+    UPDATE aprovacoes SET status=?, mensagem_final=?, decidido_por=?, decidido_em=CURRENT_TIMESTAMP
+    WHERE id=?
+  `).run(
+    decisao === 'editar' ? 'editada' : 'aprovada',
+    msgFinal, decidido_por || 'admin', req.params.id
+  );
+
+  // Registra em conversas
+  db.prepare(`
+    INSERT INTO conversas (lead_id, canal, direcao, mensagem, assunto, agente_origem, status, ultimo_msg)
+    VALUES (?, ?, 'enviada', ?, ?, ?, 'aguardando_resposta', CURRENT_TIMESTAMP)
+  `).run(apr.lead_id, apr.canal, msgFinal, apr.assunto, enviado ? `${apr.agente_origem}_aprovado` : `${apr.agente_origem}_dryrun_aprovado`);
+
+  // Marca lead
+  if (lead) {
+    db.prepare(`UPDATE leads SET status='contatado', data_primeiro_contato=COALESCE(data_primeiro_contato, CURRENT_TIMESTAMP), ultimo_outbound=CURRENT_TIMESTAMP WHERE id=?`).run(apr.lead_id);
+  }
+
+  res.json({ success: true, decisao, enviado_de_verdade: enviado });
+});
+
+// ============================================================
+// NICHOS_ALVO — CRUD ICP
+// ============================================================
+app.get('/api/nichos', (req, res) => {
+  const cliente = req.query.cliente_slug || 'l2-automation';
+  const nichos = db.prepare(`SELECT * FROM nichos_alvo WHERE cliente_slug = ? ORDER BY id`).all(cliente);
+  res.json({ nichos });
+});
+
+app.post('/api/nichos', (req, res) => {
+  const { cliente_slug, nome, cnae_filtros, uf_filtros, porte_filtros, capital_min, capital_max, cnaes_excluir } = req.body || {};
+  if (!cliente_slug || !nome) return res.status(400).json({ error: 'cliente_slug e nome obrigatorios' });
+  const r = db.prepare(`
+    INSERT INTO nichos_alvo (cliente_slug, nome, cnae_filtros, uf_filtros, porte_filtros, capital_min, capital_max, cnaes_excluir)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(cliente_slug, nome,
+    cnae_filtros ? JSON.stringify(cnae_filtros) : null,
+    uf_filtros ? JSON.stringify(uf_filtros) : null,
+    porte_filtros ? JSON.stringify(porte_filtros) : null,
+    capital_min || null, capital_max || null,
+    cnaes_excluir ? JSON.stringify(cnaes_excluir) : null,
+  );
+  res.json({ success: true, id: r.lastInsertRowid });
+});
+
+app.delete('/api/nichos/:id', (req, res) => {
+  db.prepare('DELETE FROM nichos_alvo WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ============================================================
+// PERSONAS — leitura/edição
+// ============================================================
+app.get('/api/personas', (req, res) => {
+  res.json({ personas: db.prepare('SELECT * FROM personas ORDER BY nicho').all() });
+});
+
+app.put('/api/personas/:nicho', (req, res) => {
+  const { label, dor_principal, ganho_prometido, tom, abertura_template, ganchos, exemplos_concretos } = req.body || {};
+  db.prepare(`
+    UPDATE personas SET
+      label = COALESCE(?, label),
+      dor_principal = COALESCE(?, dor_principal),
+      ganho_prometido = COALESCE(?, ganho_prometido),
+      tom = COALESCE(?, tom),
+      abertura_template = COALESCE(?, abertura_template),
+      ganchos = COALESCE(?, ganchos),
+      exemplos_concretos = COALESCE(?, exemplos_concretos),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE nicho = ?
+  `).run(
+    label, dor_principal, ganho_prometido, tom, abertura_template,
+    ganchos ? JSON.stringify(ganchos) : null,
+    exemplos_concretos ? JSON.stringify(exemplos_concretos) : null,
+    req.params.nicho,
+  );
+  res.json({ success: true });
+});
+
+// ============================================================
+// CLIENTES — multi-tenant CRUD
+// ============================================================
+app.post('/api/clientes', (req, res) => {
+  const { slug, nome, email_contato, whatsapp_contato, nicho_alvo, dna_resumo, dna_completo, plano, rate_limit_diario, auto_pilot } = req.body || {};
+  if (!slug || !nome) return res.status(400).json({ error: 'slug e nome obrigatorios' });
+  try {
+    db.prepare(`
+      INSERT INTO clientes (slug, nome, email_contato, whatsapp_contato, nicho_alvo, dna_resumo, dna_completo, plano, rate_limit_diario, auto_pilot)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(slug, nome, email_contato || null, whatsapp_contato || null, nicho_alvo || null,
+      dna_resumo || null, dna_completo || null, plano || 'trial', rate_limit_diario || 50, auto_pilot ? 1 : 0);
+    res.json({ success: true, slug });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+app.put('/api/clientes/:slug', (req, res) => {
+  const updates = req.body || {};
+  const cols = ['nome','email_contato','whatsapp_contato','auto_pilot','nicho_alvo','dna_resumo','dna_completo','plano','cobranca_status','rate_limit_diario'];
+  const sets = [], vals = [];
+  for (const c of cols) if (c in updates) { sets.push(`${c} = ?`); vals.push(updates[c]); }
+  if (!sets.length) return res.status(400).json({ error: 'nada a atualizar' });
+  vals.push(req.params.slug);
+  db.prepare(`UPDATE clientes SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE slug = ?`).run(...vals);
+  res.json({ success: true });
+});
+
+// ============================================================
+// WEBHOOKS — Resend (abertura, clique, bounce, delivered)
+// ============================================================
+app.post('/webhook/resend', express.json({ limit: '500kb' }), (req, res) => {
+  const evento = req.body || {};
+  const tipo = evento.type; // ex: 'email.opened', 'email.clicked', 'email.bounced'
+  const leadId = evento.data?.headers?.find(h => h.name === 'X-Lead-Id')?.value;
+
+  db.prepare(`
+    INSERT INTO eventos (tipo, origem, payload, agente_responsavel)
+    VALUES (?, 'resend', ?, NULL)
+  `).run(tipo || 'resend.unknown', JSON.stringify(evento).slice(0, 5000));
+
+  if (leadId) {
+    const lid = parseInt(leadId, 10);
+    if (tipo === 'email.opened') {
+      db.prepare(`UPDATE conversas SET abertura = 1 WHERE lead_id = ? AND canal = 'email' AND direcao = 'enviada' ORDER BY timestamp DESC LIMIT 1`).run(lid);
+    } else if (tipo === 'email.clicked') {
+      db.prepare(`UPDATE conversas SET clique = 1 WHERE lead_id = ? AND canal = 'email' AND direcao = 'enviada' ORDER BY timestamp DESC LIMIT 1`).run(lid);
+    } else if (tipo === 'email.bounced') {
+      db.prepare(`UPDATE leads SET status = 'descartado' WHERE id = ?`).run(lid);
+    }
+  }
+  res.json({ ok: true });
+});
+
+// Webhook não precisa de auth (mas precisa estar antes do basicAuth.use no app)
+// Como ele já tá protegido por basicAuth porque /webhook não é whitelistado... Vou abrir:
+
+// ============================================================
+// VERIFICADOR DE EMAIL — regex + DNS MX (sem chave paga)
+// ============================================================
+const dns = require('dns').promises;
+app.get('/api/verificar-email/:email', async (req, res) => {
+  const email = req.params.email;
+  const regex = /^[^\s@]+@([^\s@]+\.[^\s@]+)$/;
+  const m = email.match(regex);
+  if (!m) return res.json({ valido: false, motivo: 'formato_invalido' });
+  try {
+    const mx = await dns.resolveMx(m[1]);
+    const tem = Array.isArray(mx) && mx.length > 0;
+    res.json({ valido: tem, mx_count: mx.length, dominio: m[1] });
+  } catch (e) {
+    res.json({ valido: false, motivo: 'sem_mx', erro: e.code });
+  }
+});
+
+// ============================================================
+// ANALYTICS — funil real
+// ============================================================
+app.get('/api/analytics/funil', (req, res) => {
+  const cliente = req.query.cliente_slug;
+  const where = cliente ? 'WHERE cliente_slug = ?' : '';
+  const params = cliente ? [cliente] : [];
+
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM leads ${where}`).get(...params).c;
+  const porStatus = db.prepare(`SELECT status, COUNT(*) AS c FROM leads ${where} GROUP BY status`).all(...params);
+  const porNicho = db.prepare(`SELECT nicho, COUNT(*) AS c FROM leads ${where} GROUP BY nicho`).all(...params);
+  const respondidos = db.prepare(`SELECT COUNT(*) AS c FROM leads WHERE status IN ('respondeu','qualificado','reuniao','cliente') ${cliente ? 'AND cliente_slug = ?' : ''}`).get(...params).c;
+  const contatados = db.prepare(`SELECT COUNT(*) AS c FROM leads WHERE status IN ('contatado','respondeu','qualificado','reuniao','cliente') ${cliente ? 'AND cliente_slug = ?' : ''}`).get(...params).c;
+  const taxaResposta = contatados > 0 ? (respondidos / contatados * 100).toFixed(2) : 0;
+
+  res.json({
+    total, por_status: porStatus, por_nicho: porNicho,
+    taxa_resposta_pct: taxaResposta,
+    respondidos, contatados,
+  });
+});
+
+app.get('/api/analytics/canal', (req, res) => {
+  const stats = db.prepare(`
+    SELECT canal,
+      COUNT(*) AS total,
+      SUM(CASE WHEN direcao='enviada' THEN 1 ELSE 0 END) AS enviadas,
+      SUM(CASE WHEN direcao='recebida' THEN 1 ELSE 0 END) AS recebidas,
+      SUM(abertura) AS aberturas,
+      SUM(clique) AS cliques
+    FROM conversas
+    WHERE timestamp > datetime('now', '-30 days')
+    GROUP BY canal
+  `).all();
+  res.json({ por_canal: stats });
+});
+
+app.get('/api/analytics/agentes', (req, res) => {
+  const stats = db.prepare(`
+    SELECT agente, COUNT(*) AS runs, SUM(CASE WHEN status='sucesso' THEN 1 ELSE 0 END) AS sucessos,
+      SUM(CASE WHEN status='erro' THEN 1 ELSE 0 END) AS erros,
+      AVG(duracao_ms) AS duracao_media_ms
+    FROM runs WHERE inicio > datetime('now', '-7 days')
+    GROUP BY agente
+  `).all();
+  res.json({ por_agente: stats });
+});
+
+// ============================================================
+// FOLLOWUPS — visualização da agenda
+// ============================================================
+app.get('/api/followups', (req, res) => {
+  const status = req.query.status || 'pendente';
+  res.json({
+    followups: db.prepare(`
+      SELECT f.*, l.razao_social, l.email
+      FROM followups f
+      JOIN leads l ON l.id = f.lead_id
+      WHERE f.status = ?
+      ORDER BY f.agendado_para ASC LIMIT 200
+    `).all(status),
+  });
 });
 
 // ============================================================
