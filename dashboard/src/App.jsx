@@ -1189,11 +1189,16 @@ function AppCore({ authedUser, onLogout }) {
   return (
     <div className="app-wrapper">
       <aside className="sidebar">
-        <div className="sidebar-logo" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 0' }}>
-          <img src="/admin/favicon.svg" alt="L2" style={{ width: 46, height: 46, flexShrink: 0 }} />
-          <div style={{ lineHeight: 1.05 }}>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.55rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>L2</div>
-            <div style={{ fontSize: '9px', letterSpacing: '0.35em', color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase' }}>Automation</div>
+        <div className="sidebar-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '14px', padding: '8px 0 4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img src="/admin/favicon.svg" alt="L2" style={{ width: 54, height: 54, flexShrink: 0 }} />
+            <div style={{ lineHeight: 1.0 }}>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.85rem', fontWeight: 600, color: '#fff', letterSpacing: '-0.01em' }}>L2</div>
+              <div style={{ fontSize: '10px', letterSpacing: '0.42em', color: 'var(--accent)', fontWeight: 600, textTransform: 'uppercase', marginTop: '2px' }}>Automation</div>
+            </div>
+          </div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '9.5px', letterSpacing: '0.32em', color: 'var(--text-3)', textTransform: 'uppercase', borderTop: '1px solid var(--border)', paddingTop: '12px', width: '100%' }}>
+            IA · Automação · Negócios
           </div>
         </div>
         <nav>
