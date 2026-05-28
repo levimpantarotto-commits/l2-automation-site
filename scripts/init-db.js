@@ -151,6 +151,13 @@ const AGENTES_BASE = [
     cron_expr: '0 3 * * *', // 3h da manha
     cron_ativo: 1,
   },
+  {
+    nome: 'janitor',
+    label: 'Janitor',
+    descricao: 'Limpa runs/eventos/rate_limits antigos + auto-promove leads quentes (BANT>80 ou respondeu).',
+    cron_expr: '0 4 * * *', // 4h da manha
+    cron_ativo: 1,
+  },
 ];
 
 function seed(db) {

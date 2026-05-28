@@ -98,8 +98,11 @@ PASTAS_PUBLICAS.forEach(p => {
   if (fs.existsSync(dir)) app.use(`/${p}`, express.static(dir, { maxAge: '7d' }));
 });
 
-// Alias amigável /admin/inbox -> inbox.html (precisa estar ANTES do SPA fallback)
+// Aliases admin (HTML standalone — ANTES do SPA fallback)
 app.get('/admin/inbox', (req, res) => res.sendFile(path.join(__dirname, 'inbox.html')));
+app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard-admin.html')));
+app.get('/admin/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads-admin.html')));
+app.get('/admin/config', (req, res) => res.sendFile(path.join(__dirname, 'config-admin.html')));
 
 // Painel admin — dashboard React buildado pelo Vite (public/admin/)
 // Fallback: admin/index.html simples (legacy) caso dashboard não esteja buildado
@@ -116,6 +119,7 @@ if (fs.existsSync(adminBuilt)) {
 const ARQS_RAIZ = [
   'index.html', 'avatares-teste.html', 'escritorio-3d-teste.html', 'escritorioteste.html',
   'sitemap.xml', 'robots.txt', 'logo.svg', 'inbox.html',
+  'dashboard-admin.html', 'leads-admin.html', 'config-admin.html',
 ];
 ARQS_RAIZ.forEach(arq => {
   const file = path.join(__dirname, arq);
@@ -263,32 +267,36 @@ app.get('/api/auth/me', (req, res) => {
 app.post('/api/auth/login', (req, res) => res.json({ success: true, user: { username: 'admin' } }));
 app.post('/api/auth/logout', (req, res) => res.json({ success: true }));
 
-// Clientes (multi-tenant futuro; por enquanto 1 fixo - L2 Automation próprio)
+// Clientes (multi-tenant real)
 app.get('/api/clientes', (req, res) => {
-  res.json([
-    { slug: 'l2-automation', nome: 'L2 Automation', ativo: 1, auto_pilot: 0 },
-  ]);
+  const clientes = db.prepare(`SELECT * FROM clientes ORDER BY created_at DESC`).all();
+  res.json(clientes);
 });
+
 app.get('/api/clientes/:slug', (req, res) => {
+  const cliente = db.prepare(`SELECT * FROM clientes WHERE slug = ?`).get(req.params.slug);
+  if (!cliente) {
+    // Backward-compat com dashboard React antigo
+    return res.json({
+      cliente: { slug: req.params.slug, nome: req.params.slug, ativo: 1, auto_pilot: 0 },
+      stats: { manualPosts: 0, autoPosts: 0, totalPosts: 0, aprovados: 0, pendentes: 0 },
+      dna: 'Cliente ainda não cadastrado. Use /admin/config pra criar.',
+      log: null, neuralFlow: [],
+    });
+  }
+  // Stats do funil pra esse cliente
+  const stats = {
+    leads: db.prepare(`SELECT COUNT(*) AS c FROM leads WHERE cliente_slug = ?`).get(req.params.slug).c,
+    contatados: db.prepare(`SELECT COUNT(*) AS c FROM leads WHERE cliente_slug = ? AND status IN ('contatado','respondeu','qualificado','reuniao','cliente')`).get(req.params.slug).c,
+    qualificados: db.prepare(`SELECT COUNT(*) AS c FROM leads WHERE cliente_slug = ? AND status IN ('qualificado','reuniao','cliente')`).get(req.params.slug).c,
+    aprovacoes_pendentes: db.prepare(`SELECT COUNT(*) AS c FROM aprovacoes WHERE status='pendente' AND lead_id IN (SELECT id FROM leads WHERE cliente_slug = ?)`).get(req.params.slug).c,
+  };
   res.json({
-    cliente: {
-      slug: req.params.slug,
-      nome: 'L2 Automation',
-      ativo: 1,
-      auto_pilot: 0,
-      vault_folder: null,
-      dna: null,
-    },
-    stats: {
-      manualPosts: 0,
-      autoPosts: 0,
-      totalPosts: 0,
-      aprovados: 0,
-      pendentes: 0,
-    },
-    dna: 'Cérebro do cliente ainda não configurado. Integração com Obsidian em desenvolvimento — você poderá colar o DNA aqui ou conectar pasta do vault.',
-    log: null,
-    neuralFlow: [],
+    cliente,
+    stats,
+    dna: cliente.dna_resumo || 'DNA não cadastrado',
+    dnaCompleto: cliente.dna_completo,
+    log: null, neuralFlow: [],
   });
 });
 
@@ -718,6 +726,117 @@ app.get('/api/scheduler/status', (req, res) => {
     nome, cron_expr: info.cron_expr,
   }));
   res.json({ ativo: true, total: jobs.length, jobs });
+});
+
+// ============================================================
+// EVENT WORKER — consome tabela eventos em loop curto (10s)
+// Reage em tempo quase real a lead_novo, lead_respondeu, etc.
+// ============================================================
+let eventWorkerInstance = null;
+try {
+  const startEventWorker = require('./agents/event_worker');
+  eventWorkerInstance = startEventWorker(db);
+} catch (e) {
+  console.error('[boot] event_worker falhou:', e.message);
+}
+
+// ============================================================
+// NOTIFICACOES — Cortex alertas internos
+// ============================================================
+app.get('/api/notif', (req, res) => {
+  const filtro = req.query.lida === '0' ? 'WHERE lida = 0' : '';
+  const notifs = db.prepare(`
+    SELECT * FROM notificacoes ${filtro} ORDER BY created_at DESC LIMIT 100
+  `).all();
+  const naoLidas = db.prepare(`SELECT COUNT(*) AS c FROM notificacoes WHERE lida = 0`).get().c;
+  res.json({ notificacoes: notifs, nao_lidas: naoLidas });
+});
+
+app.post('/api/notif/:id/ler', (req, res) => {
+  db.prepare(`UPDATE notificacoes SET lida = 1, lida_em = CURRENT_TIMESTAMP WHERE id = ?`).run(req.params.id);
+  res.json({ success: true });
+});
+
+app.post('/api/notif/marcar-todas-lidas', (req, res) => {
+  const r = db.prepare(`UPDATE notificacoes SET lida = 1, lida_em = CURRENT_TIMESTAMP WHERE lida = 0`).run();
+  res.json({ success: true, marcadas: r.changes });
+});
+
+// ============================================================
+// OPT-OUTS (LGPD)
+// ============================================================
+app.get('/api/opt-outs', (req, res) => {
+  res.json({ opt_outs: db.prepare(`SELECT * FROM opt_outs ORDER BY created_at DESC LIMIT 200`).all() });
+});
+
+app.post('/api/opt-outs', (req, res) => {
+  const { cnpj, email, whatsapp, motivo, origem } = req.body || {};
+  if (!cnpj && !email && !whatsapp) return res.status(400).json({ error: 'pelo menos um identificador obrigatorio' });
+  const r = db.prepare(`
+    INSERT INTO opt_outs (cnpj, email, whatsapp, motivo, origem)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(cnpj || null, email || null, whatsapp || null, motivo || null, origem || 'admin_manual');
+
+  // Cancela followups pendentes desse lead
+  if (cnpj) {
+    db.prepare(`
+      UPDATE followups SET status = 'cancelado' WHERE lead_id IN (SELECT id FROM leads WHERE cnpj = ?)
+    `).run(cnpj);
+  }
+  res.json({ success: true, id: r.lastInsertRowid });
+});
+
+// Endpoint público (sem auth) pra lead se descadastrar via link no email
+app.get('/opt-out/:token', (req, res) => {
+  // Token simples: base64 do email — substituir por JWT em produção
+  let email;
+  try { email = Buffer.from(req.params.token, 'base64').toString('utf-8'); } catch { return res.status(400).send('Token inválido'); }
+  if (!email.includes('@')) return res.status(400).send('Token inválido');
+
+  db.prepare(`
+    INSERT INTO opt_outs (email, motivo, origem)
+    VALUES (?, 'lead pediu via link', 'lead_pediu')
+  `).run(email);
+  db.prepare(`
+    UPDATE followups SET status = 'cancelado' WHERE lead_id IN (SELECT id FROM leads WHERE email = ?)
+  `).run(email);
+
+  res.send(`
+    <!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Descadastrado</title>
+    <style>body{font-family:system-ui;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+    .box{text-align:center;padding:40px;border:1px solid #D4AF37;border-radius:8px;max-width:480px}
+    h1{color:#D4AF37;font-weight:900;letter-spacing:-0.03em}</style></head>
+    <body><div class="box"><h1>Descadastrado.</h1>
+    <p>Não vamos mais te enviar nada. Se foi engano, manda email pra levi@l2automation.com.br.</p></div></body></html>
+  `);
+});
+
+// ============================================================
+// LEADS — detalhe + histórico conversas
+// ============================================================
+app.get('/api/leads/:id', (req, res) => {
+  const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(req.params.id);
+  if (!lead) return res.status(404).json({ error: 'nao encontrado' });
+  const conversas = db.prepare(`SELECT * FROM conversas WHERE lead_id = ? ORDER BY timestamp ASC`).all(req.params.id);
+  const followups = db.prepare(`SELECT * FROM followups WHERE lead_id = ? ORDER BY agendado_para ASC`).all(req.params.id);
+  const aprovacoes = db.prepare(`SELECT * FROM aprovacoes WHERE lead_id = ? ORDER BY created_at DESC`).all(req.params.id);
+  res.json({ lead, conversas, followups, aprovacoes });
+});
+
+// Lista leads com mais filtros
+app.get('/api/leads-full', (req, res) => {
+  const { status, nicho, score_min, uf, q, limit = 50, offset = 0 } = req.query;
+  let sql = 'SELECT * FROM leads WHERE 1=1';
+  const params = [];
+  if (status) { sql += ' AND status = ?'; params.push(status); }
+  if (nicho) { sql += ' AND nicho = ?'; params.push(nicho); }
+  if (uf) { sql += ' AND uf = ?'; params.push(uf); }
+  if (score_min) { sql += ' AND score >= ?'; params.push(Number(score_min)); }
+  if (q) { sql += ' AND (razao_social LIKE ? OR nome_fantasia LIKE ? OR cnpj LIKE ?)';
+    const like = `%${q}%`; params.push(like, like, like); }
+  sql += ' ORDER BY score DESC NULLS LAST, data_coleta DESC LIMIT ? OFFSET ?';
+  params.push(Math.min(Number(limit) || 50, 500), Number(offset) || 0);
+  res.json({ leads: db.prepare(sql).all(...params) });
 });
 
 // ============================================================

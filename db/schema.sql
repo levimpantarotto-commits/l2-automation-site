@@ -286,6 +286,38 @@ CREATE TABLE IF NOT EXISTS followups (
 CREATE INDEX IF NOT EXISTS idx_followups_pendentes ON followups(status, agendado_para);
 
 -- ============================================================
+-- NOTIFICACOES — Cortex alertas internos pro Levi
+-- ============================================================
+CREATE TABLE IF NOT EXISTS notificacoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  titulo TEXT NOT NULL,
+  payload TEXT,
+  criticidade TEXT DEFAULT 'info', -- info | warning | critical
+  lida INTEGER DEFAULT 0,
+  lida_em TIMESTAMP,
+  acao_tomada TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notif_nao_lidas ON notificacoes(lida, created_at) WHERE lida = 0;
+
+-- ============================================================
+-- OPT_OUTS — LGPD: lead pediu pra não ser mais contatado
+-- ============================================================
+CREATE TABLE IF NOT EXISTS opt_outs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cnpj TEXT,
+  email TEXT,
+  whatsapp TEXT,
+  motivo TEXT,
+  origem TEXT,                      -- 'lead_pediu' | 'admin_manual' | 'bounce_hard'
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_opt_outs_email ON opt_outs(email);
+CREATE INDEX IF NOT EXISTS idx_opt_outs_cnpj ON opt_outs(cnpj);
+
+-- ============================================================
 -- BACKUPS_LOG — histórico de backups do SQLite
 -- ============================================================
 CREATE TABLE IF NOT EXISTS backups_log (

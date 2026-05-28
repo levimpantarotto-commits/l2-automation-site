@@ -158,6 +158,41 @@ function cancelarFollowupsPendentes(db, leadId) {
   `).run(leadId);
 }
 
+// ============================================================
+// OPT-OUT (LGPD) — lead pediu pra não receber mais
+// ============================================================
+function temOptOut(db, { cnpj, email, whatsapp }) {
+  if (!cnpj && !email && !whatsapp) return false;
+  const where = [];
+  const vals = [];
+  if (cnpj) { where.push('cnpj = ?'); vals.push(cnpj); }
+  if (email) { where.push('email = ?'); vals.push(email); }
+  if (whatsapp) { where.push('whatsapp = ?'); vals.push(whatsapp); }
+  const row = db.prepare(`SELECT id FROM opt_outs WHERE ${where.join(' OR ')} LIMIT 1`).get(...vals);
+  return !!row;
+}
+
+function registrarOptOut(db, dados) {
+  return db.prepare(`
+    INSERT INTO opt_outs (cnpj, email, whatsapp, motivo, origem)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(dados.cnpj || null, dados.email || null, dados.whatsapp || null, dados.motivo || null, dados.origem || 'admin_manual');
+}
+
+// ============================================================
+// NOTIFICAR (Cortex alertas internos)
+// ============================================================
+function notificar(db, { titulo, payload, criticidade = 'info' }) {
+  try {
+    db.prepare(`
+      INSERT INTO notificacoes (titulo, payload, criticidade)
+      VALUES (?, ?, ?)
+    `).run(titulo, JSON.stringify(payload || {}), criticidade);
+  } catch (e) {
+    console.warn(`[notificar] falhou: ${e.message}`);
+  }
+}
+
 module.exports = {
   bantScore,
   passaICP,
@@ -166,5 +201,8 @@ module.exports = {
   consumirRateLimit,
   agendarFollowups,
   cancelarFollowupsPendentes,
+  temOptOut,
+  registrarOptOut,
+  notificar,
   safeParse,
 };

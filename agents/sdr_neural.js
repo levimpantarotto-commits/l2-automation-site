@@ -7,7 +7,7 @@
 const AgenteBase = require('./base');
 const Copywriter = require('./copywriter');
 const {
-  checarRateLimit, consumirRateLimit, cancelarFollowupsPendentes,
+  checarRateLimit, consumirRateLimit, cancelarFollowupsPendentes, temOptOut,
 } = require('./utils');
 
 const RESEND_API = 'https://api.resend.com/emails';
@@ -50,8 +50,9 @@ class SdrNeural extends AgenteBase {
       const cliente = this.db.prepare('SELECT * FROM clientes WHERE slug = ?').get(clienteSlug);
       const lead = this.db.prepare('SELECT * FROM leads WHERE id = ?').get(f.lead_id);
 
-      // Lead já respondeu? cancela tudo
-      if (lead.status === 'respondeu' || lead.status === 'qualificado' || lead.status === 'reuniao') {
+      // Lead já respondeu OU pediu opt-out? cancela tudo
+      if (lead.status === 'respondeu' || lead.status === 'qualificado' || lead.status === 'reuniao'
+          || temOptOut(this.db, { cnpj: lead.cnpj, email: lead.email, whatsapp: lead.whatsapp })) {
         this.db.prepare(`UPDATE followups SET status='cancelado' WHERE id=?`).run(f.id);
         continue;
       }

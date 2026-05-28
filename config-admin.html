@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>L2 Automation · Configuração</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<style>
+  :root { --bg:#000;--surface-1:#0d0d0d;--surface-2:#161616;--border:rgba(212,175,55,0.18);
+    --accent:#E6BE48;--accent-deep:#8B6F1F;--text:#fdfdfd;--text-2:#b8b8b8;--text-3:#777;
+    --success:#00ff88;--warn:#ffb800;--err:#ff3366; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter Tight', 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px;
+    background-image: linear-gradient(rgba(230,190,72,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(230,190,72,0.025) 1px, transparent 1px); background-size: 80px 80px; }
+  header { display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 32px; }
+  h1 { font-weight: 900; font-size: 2.2rem; letter-spacing: -0.04em; text-transform: uppercase;
+    background: linear-gradient(180deg, #fff, #888); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; }
+  nav.top { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-3); text-decoration: none; padding: 9px 16px; border-radius: 4px;
+    font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700;
+    border: 1px solid transparent; }
+  nav.top a:hover, nav.top a.active { color: var(--accent); background: var(--surface-1); border-color: var(--border); }
+  section { margin-bottom: 40px; background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; padding: 24px 28px; }
+  section > h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent);
+    margin-bottom: 18px; font-weight: 700; }
+  .row { display: grid; grid-template-columns: 200px 1fr auto; gap: 16px; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .row:last-child { border: none; }
+  label { font-size: 10px; color: var(--text-3); letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+  input, select, textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    padding: 10px 14px; border-radius: 4px; font-family: inherit; font-size: 13px; outline: none; }
+  textarea { min-height: 80px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  button { background: var(--surface-2); color: var(--accent); border: 1px solid var(--accent); padding: 10px 22px;
+    border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px;
+    letter-spacing: 0.15em; text-transform: uppercase; font-weight: 700; }
+  button:hover { background: rgba(230,190,72,0.1); }
+  button.danger { color: var(--err); border-color: var(--err); }
+  button.danger:hover { background: rgba(255,51,102,0.1); }
+  .accordion { border-bottom: 1px solid var(--border); padding: 14px 0; }
+  .accordion-head { display: flex; justify-content: space-between; cursor: pointer; align-items: center; }
+  .accordion-body { display: none; margin-top: 18px; }
+  .accordion.open .accordion-body { display: block; }
+  .accordion-name { font-weight: 700; }
+  .accordion-name .sub { font-size: 10px; color: var(--text-3); letter-spacing: 0.15em; text-transform: uppercase; margin-left: 12px; }
+  .badge { background: rgba(230,190,72,0.12); border: 1px solid var(--border); padding: 6px 14px;
+    border-radius: 4px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--success); color: #000;
+    padding: 12px 20px; border-radius: 4px; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; opacity: 0; transition: opacity 0.3s; }
+  .toast.show { opacity: 1; }
+  .add-form { background: var(--surface-2); padding: 18px; border-radius: 4px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Configuração</h1>
+  <p style="color: var(--text-3); margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600;">ICP · Personas · Clientes</p></div>
+  <span class="badge">L2 Automation</span>
+</header>
+
+<nav class="top">
+  <a href="/admin/dashboard">Dashboard</a>
+  <a href="/admin/leads">Leads</a>
+  <a href="/admin/inbox">Inbox</a>
+  <a href="/admin/config" class="active">Config</a>
+  <a href="/admin/" style="margin-left: auto;">← Painel React</a>
+</nav>
+
+<section>
+  <h2>Clientes (multi-tenant)</h2>
+  <div id="clientes-list"></div>
+</section>
+
+<section>
+  <h2>Personas (copy switcher por nicho)</h2>
+  <div id="personas-list"></div>
+</section>
+
+<section>
+  <h2>Nichos alvo (ICP — quais leads buscar)</h2>
+  <div id="nichos-list"></div>
+  <div class="add-form">
+    <h3 style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: var(--accent-deep); margin-bottom: 12px;">+ Adicionar nicho alvo</h3>
+    <div class="row"><label>Nome</label><input id="n-nome" placeholder="Imobiliárias premium SP" /></div>
+    <div class="row"><label>CNAEs (vírgula)</label><input id="n-cnae" placeholder="6810, 6822" /></div>
+    <div class="row"><label>UFs (vírgula)</label><input id="n-uf" placeholder="SP, RJ" /></div>
+    <div class="row"><label>Portes (vírgula)</label><input id="n-porte" placeholder="EPP, DEMAIS" /></div>
+    <div class="row"><label>Capital mínimo</label><input id="n-cap-min" type="number" placeholder="100000" /></div>
+    <div class="row" style="border: none;"><label></label><span></span><button onclick="addNicho()">Adicionar</button></div>
+  </div>
+</section>
+
+<section>
+  <h2>Cérebro de Persuasão</h2>
+  <div id="cerebro-list" style="font-size: 12px; color: var(--text-2);">Carregando...</div>
+  <p style="font-size: 11px; color: var(--text-3); margin-top: 14px; letter-spacing: 0.05em;">
+    Pra sincronizar do vault, rodar local: <code style="background: var(--surface-2); padding: 2px 6px; border-radius: 2px;">node scripts/sync-cerebro.js</code>
+  </p>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const toast = (msg) => {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+};
+
+async function carregar() {
+  const [clientes, personas, nichos, cerebro] = await Promise.all([
+    fetch('/api/clientes').then(r => r.json()),
+    fetch('/api/personas').then(r => r.json()),
+    fetch('/api/nichos').then(r => r.json()),
+    fetch('/api/cerebro').then(r => r.json()),
+  ]);
+
+  // Clientes
+  document.getElementById('clientes-list').innerHTML = (clientes || []).map(c => `
+    <div class="accordion" data-slug="${c.slug}">
+      <div class="accordion-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="accordion-name">${c.nome} <span class="sub">${c.slug} · ${c.plano || 'trial'} · auto-pilot ${c.auto_pilot ? 'ON' : 'OFF'}</span></div>
+        <span style="color: var(--text-3);">▾</span>
+      </div>
+      <div class="accordion-body">
+        <div class="row"><label>Nome</label><input value="${c.nome || ''}" data-f="nome" /></div>
+        <div class="row"><label>Email contato</label><input value="${c.email_contato || ''}" data-f="email_contato" /></div>
+        <div class="row"><label>Nicho alvo</label><input value="${c.nicho_alvo || ''}" data-f="nicho_alvo" /></div>
+        <div class="row"><label>Plano</label><select data-f="plano">
+          <option ${c.plano==='trial'?'selected':''}>trial</option>
+          <option ${c.plano==='starter'?'selected':''}>starter</option>
+          <option ${c.plano==='pro'?'selected':''}>pro</option>
+          <option ${c.plano==='enterprise'?'selected':''}>enterprise</option>
+        </select></div>
+        <div class="row"><label>Rate limit/dia</label><input type="number" value="${c.rate_limit_diario || 50}" data-f="rate_limit_diario" /></div>
+        <div class="row"><label>Auto-pilot</label><select data-f="auto_pilot">
+          <option value="0" ${!c.auto_pilot?'selected':''}>OFF (toda msg vai pra aprovação)</option>
+          <option value="1" ${c.auto_pilot?'selected':''}>ON (envia sem aprovar)</option>
+        </select></div>
+        <div class="row"><label>DNA resumo</label><textarea data-f="dna_resumo">${c.dna_resumo || ''}</textarea></div>
+        <div class="row" style="border: none;"><label></label><span></span><button onclick="salvarCliente('${c.slug}')">Salvar</button></div>
+      </div>
+    </div>
+  `).join('');
+
+  // Personas
+  document.getElementById('personas-list').innerHTML = (personas.personas || []).map(p => `
+    <div class="accordion" data-nicho="${p.nicho}">
+      <div class="accordion-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="accordion-name">${p.label} <span class="sub">${p.nicho}</span></div>
+        <span style="color: var(--text-3);">▾</span>
+      </div>
+      <div class="accordion-body">
+        <div class="row"><label>Label</label><input value="${p.label || ''}" data-f="label" /></div>
+        <div class="row"><label>Dor principal</label><textarea data-f="dor_principal">${p.dor_principal || ''}</textarea></div>
+        <div class="row"><label>Ganho prometido</label><textarea data-f="ganho_prometido">${p.ganho_prometido || ''}</textarea></div>
+        <div class="row"><label>Tom</label><input value="${p.tom || ''}" data-f="tom" /></div>
+        <div class="row"><label>Abertura template</label><textarea data-f="abertura_template">${p.abertura_template || ''}</textarea></div>
+        <div class="row" style="border: none;"><label></label><span></span><button onclick="salvarPersona('${p.nicho}')">Salvar</button></div>
+      </div>
+    </div>
+  `).join('');
+
+  // Nichos alvo
+  document.getElementById('nichos-list').innerHTML = (nichos.nichos || []).map(n => {
+    const parse = s => { try { return JSON.parse(s); } catch { return []; } };
+    return `<div class="accordion">
+      <div class="accordion-head">
+        <div class="accordion-name">${n.nome} <span class="sub">${(parse(n.cnae_filtros)).join(',')} · ${(parse(n.uf_filtros)).join(',')} · ${(parse(n.porte_filtros)).join(',')}</span></div>
+        <button class="danger" onclick="event.stopPropagation(); removerNicho(${n.id})" style="padding: 6px 14px;">Remover</button>
+      </div>
+    </div>`;
+  }).join('') || '<p style="color: var(--text-3); font-size: 12px; padding: 8px 0;">Nenhum nicho ICP cadastrado. CNPJ Finder não vai buscar nada.</p>';
+
+  // Cérebro
+  document.getElementById('cerebro-list').innerHTML = (cerebro.arquivos || []).length === 0
+    ? '<p style="color: var(--text-3);">Cérebro vazio. Roda o sync local.</p>'
+    : `<table style="width: 100%;">
+        <thead><tr style="background: rgba(230,190,72,0.05);">
+          <th style="padding: 10px; text-align: left; font-size: 10px; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase;">Arquivo</th>
+          <th style="padding: 10px; text-align: left; font-size: 10px; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase;">Fonte</th>
+          <th style="padding: 10px; text-align: right; font-size: 10px; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase;">Tamanho</th>
+        </tr></thead>
+        <tbody>${cerebro.arquivos.map(a => `
+          <tr><td style="padding: 10px;">${a.titulo}</td><td style="padding: 10px;">${a.fonte || '—'}</td><td style="padding: 10px; text-align: right; font-family: monospace;">${(a.tamanho_bytes/1024).toFixed(1)}KB</td></tr>
+        `).join('')}</tbody>
+      </table>`;
+}
+
+async function salvarCliente(slug) {
+  const root = document.querySelector(`[data-slug="${slug}"] .accordion-body`);
+  const body = {};
+  root.querySelectorAll('[data-f]').forEach(el => {
+    body[el.dataset.f] = el.type === 'number' ? Number(el.value) :
+      el.dataset.f === 'auto_pilot' ? Number(el.value) : el.value;
+  });
+  const r = await fetch('/api/clientes/' + slug, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  toast(r.ok ? 'Cliente salvo' : 'Erro: ' + r.status);
+}
+
+async function salvarPersona(nicho) {
+  const root = document.querySelector(`[data-nicho="${nicho}"] .accordion-body`);
+  const body = {};
+  root.querySelectorAll('[data-f]').forEach(el => body[el.dataset.f] = el.value);
+  const r = await fetch('/api/personas/' + nicho, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  toast(r.ok ? 'Persona salva' : 'Erro: ' + r.status);
+}
+
+async function addNicho() {
+  const arr = s => s.split(',').map(x => x.trim()).filter(Boolean);
+  const body = {
+    cliente_slug: 'l2-automation',
+    nome: document.getElementById('n-nome').value,
+    cnae_filtros: arr(document.getElementById('n-cnae').value),
+    uf_filtros: arr(document.getElementById('n-uf').value),
+    porte_filtros: arr(document.getElementById('n-porte').value),
+    capital_min: Number(document.getElementById('n-cap-min').value) || null,
+  };
+  if (!body.nome) return alert('Nome obrigatório');
+  const r = await fetch('/api/nichos', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  if (r.ok) {
+    toast('Nicho adicionado');
+    ['n-nome','n-cnae','n-uf','n-porte','n-cap-min'].forEach(id => document.getElementById(id).value = '');
+    carregar();
+  }
+}
+
+async function removerNicho(id) {
+  if (!confirm('Remover nicho?')) return;
+  await fetch('/api/nichos/' + id, { method: 'DELETE' });
+  carregar();
+}
+
+carregar();
+</script>
+</body>
+</html>

@@ -8,7 +8,7 @@
 const AgenteBase = require('./base');
 const Copywriter = require('./copywriter');
 const {
-  jaContatadoRecente, checarRateLimit, consumirRateLimit, agendarFollowups,
+  jaContatadoRecente, checarRateLimit, consumirRateLimit, agendarFollowups, temOptOut,
 } = require('./utils');
 
 const RESEND_API = 'https://api.resend.com/emails';
@@ -48,6 +48,11 @@ class OutboundEmail extends AgenteBase {
       const clienteSlug = lead.cliente_slug || 'l2-automation';
       const cliente = this.db.prepare('SELECT * FROM clientes WHERE slug = ?').get(clienteSlug);
 
+      // Opt-out LGPD
+      if (temOptOut(this.db, { cnpj: lead.cnpj, email: lead.email, whatsapp: lead.whatsapp })) {
+        stats.opt_out = (stats.opt_out || 0) + 1;
+        continue;
+      }
       // Dedup
       if (jaContatadoRecente(this.db, lead.cnpj, 90)) {
         stats.dedup++;
