@@ -873,6 +873,55 @@ app.post('/api/ideias', (req, res) => {
   res.json({ success: true, id: r.lastInsertRowid });
 });
 
+// Detalhe de ideia + posts/roteiros derivados
+app.get('/api/ideias/:id', (req, res) => {
+  const ideia = db.prepare('SELECT * FROM ideias WHERE id = ?').get(req.params.id);
+  if (!ideia) return res.status(404).json({ error: 'nao encontrada' });
+  const posts = db.prepare('SELECT * FROM posts WHERE ideia_origem_id = ? ORDER BY created_at DESC').all(req.params.id);
+  const roteiros = db.prepare('SELECT * FROM roteiros WHERE ideia_origem_id = ? ORDER BY created_at DESC').all(req.params.id);
+  const tarefas_pendentes = db.prepare(`
+    SELECT * FROM tarefas_ia
+    WHERE callback_payload LIKE ?
+    ORDER BY created_at DESC
+  `).all(`%"ideia_id":${req.params.id}%`);
+  res.json({ ideia, posts, roteiros, tarefas_pendentes });
+});
+
+// Editar ideia
+app.put('/api/ideias/:id', (req, res) => {
+  const { titulo, descricao, conteudo_raw, tags, status } = req.body || {};
+  const cols = []; const vals = [];
+  if (titulo !== undefined) { cols.push('titulo = ?'); vals.push(titulo); }
+  if (descricao !== undefined) { cols.push('descricao = ?'); vals.push(descricao); }
+  if (conteudo_raw !== undefined) { cols.push('conteudo_raw = ?'); vals.push(conteudo_raw); }
+  if (tags !== undefined) { cols.push('tags = ?'); vals.push(JSON.stringify(tags)); }
+  if (status !== undefined) { cols.push('status = ?'); vals.push(status); }
+  if (cols.length === 0) return res.status(400).json({ error: 'nada a atualizar' });
+  vals.push(req.params.id);
+  db.prepare(`UPDATE ideias SET ${cols.join(', ')} WHERE id = ?`).run(...vals);
+  res.json({ success: true });
+});
+
+// Dispara geração manual de post/roteiro a partir de uma ideia
+app.post('/api/ideias/:id/gerar', (req, res) => {
+  const { tipo, rede } = req.body || {};
+  const ideia = db.prepare('SELECT * FROM ideias WHERE id = ?').get(req.params.id);
+  if (!ideia) return res.status(404).json({ error: 'ideia nao encontrada' });
+  if (!tipo) return res.status(400).json({ error: 'tipo obrigatorio (post|roteiro)' });
+
+  try {
+    const agente = tipo === 'roteiro' ? 'video_prototyper' : 'post_generator';
+    const AgenteImpl = require(path.join(__dirname, 'agents', `${agente}.js`));
+    const instance = new AgenteImpl(db);
+    // Força execução com essa ideia específica (simplificação: o agente vai pegar todas as ideias 'nova' mas vai re-marcar essa)
+    db.prepare(`UPDATE ideias SET status='nova' WHERE id=?`).run(req.params.id);
+    instance.run({ redes: rede ? [rede] : undefined }, 'manual_ideia').catch(e => console.error(`[ideia gerar]`, e.message));
+    res.json({ success: true, agente, mensagem: `${agente} disparado` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============================================================
 // CRON SCHEDULER (node-cron) — dispara agentes pelo cron_expr do DB
 // Lê tabela agentes (cron_ativo=1) e agenda jobs. Hot-reload a cada 60s.

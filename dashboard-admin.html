@@ -81,6 +81,11 @@
 </section>
 
 <section>
+  <h2>Funil visual</h2>
+  <div id="funil-svg" style="background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px; padding: 28px; margin-bottom: 16px;"></div>
+</section>
+
+<section>
   <h2>Leads por status</h2>
   <table id="tbl-status"><thead><tr><th>Status</th><th>Quantidade</th><th>%</th></tr></thead><tbody></tbody></table>
 </section>
@@ -118,6 +123,25 @@ async function carregar() {
     <div class="card"><div class="label">Respondidos</div><div class="value">${funil.respondidos}</div></div>
     <div class="card"><div class="label">Taxa resposta</div><div class="value">${funil.taxa_resposta_pct}%</div></div>
   `;
+
+  // Funil visual SVG (gráfico de barras horizontal por status)
+  const ordemFunil = ['novo','enriquecido','contatado','respondeu','qualificado','reuniao','cliente'];
+  const porStatusMap = {};
+  (funil.por_status || []).forEach(s => porStatusMap[s.status] = s.c);
+  const max = Math.max(...ordemFunil.map(s => porStatusMap[s] || 0), 1);
+  const w = 800, lh = 38;
+  let svg = `<svg viewBox="0 0 ${w} ${ordemFunil.length * lh + 20}" style="width: 100%; max-width: ${w}px; height: auto;">`;
+  ordemFunil.forEach((s, i) => {
+    const v = porStatusMap[s] || 0;
+    const barW = (v / max) * (w - 200);
+    const y = i * lh + 10;
+    const cor = s === 'cliente' ? '#00ff88' : s === 'qualificado' ? '#E6BE48' : s === 'descartado' ? '#ff3366' : '#8B6F1F';
+    svg += `<text x="0" y="${y + 18}" fill="#888" font-size="12" font-family="Inter Tight" letter-spacing="1.5" style="text-transform:uppercase;font-weight:700;">${s}</text>`;
+    svg += `<rect x="130" y="${y + 6}" width="${barW}" height="22" fill="${cor}" opacity="0.85" rx="2"/>`;
+    svg += `<text x="${140 + barW}" y="${y + 22}" fill="#fdfdfd" font-size="14" font-family="Inter Tight" font-weight="800">${v}</text>`;
+  });
+  svg += `</svg>`;
+  document.getElementById('funil-svg').innerHTML = svg;
 
   // Status
   const tot = funil.total || 1;
@@ -157,5 +181,5 @@ async function carregar() {
 carregar();
 setInterval(carregar, 30000);
 </script>
-</body>
+<div id="l2-status-indicator" style="position:fixed;bottom:18px;right:18px;background:rgba(0,0,0,0.85);border:1px solid rgba(212,175,55,0.20);border-radius:20px;padding:8px 16px;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#888;font-weight:700;display:flex;align-items:center;gap:8px;backdrop-filter:blur(10px);z-index:50;font-family:Inter Tight,system-ui,sans-serif;"><span id="l2-dot" style="width:6px;height:6px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88;"></span><span id="l2-txt">online</span></div><script>(function(){async function check(){try{const r=await fetch("/api/saude",{cache:"no-store"});const d=await r.json();const dot=document.getElementById("l2-dot");const txt=document.getElementById("l2-txt");if(d.ok){dot.style.background="#00ff88";dot.style.boxShadow="0 0 8px #00ff88";txt.textContent="online · "+Math.floor(d.uptime_s/60)+"min";}else{dot.style.background="#ff3366";txt.textContent="erro";}}catch(e){const dot=document.getElementById("l2-dot");dot.style.background="#ff3366";dot.style.boxShadow="0 0 8px #ff3366";document.getElementById("l2-txt").textContent="offline";}}check();setInterval(check,15000);})();</script></body>
 </html>
