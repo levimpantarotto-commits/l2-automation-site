@@ -63,11 +63,24 @@ function EstacaoMobilia() {
   );
 }
 
-const VIEWS_VALIDAS = ['kanban', 'cerebro', 'roteiros', 'aprovacoes', 'trafego', 'yt-trends', 'miner', 'calendar', 'escritorio', 'usuarios'];
+const VIEWS_VALIDAS = ['inicio', 'kanban', 'cerebro', 'roteiros', 'aprovacoes', 'trafego', 'yt-trends', 'miner', 'calendar', 'escritorio', 'usuarios', 'inbox', 'leads', 'config', 'posts', 'ideias', 'ia', 'comecar', 'sobre', 'dashboard'];
 function getViewFromHash() {
   const h = (window.location.hash || '').replace(/^#/, '');
-  return VIEWS_VALIDAS.includes(h) ? h : 'kanban';
+  return VIEWS_VALIDAS.includes(h) ? h : 'inicio';
 }
+
+// Páginas standalone que renderizam dentro de um iframe (sem rebuild do React)
+const STANDALONE_VIEWS = {
+  inbox: '/admin/standalone/inbox',
+  leads: '/admin/standalone/leads',
+  config: '/admin/standalone/config',
+  posts: '/admin/standalone/posts',
+  ideias: '/admin/standalone/ideias',
+  ia: '/admin/standalone/ia',
+  comecar: '/admin/standalone/comecar',
+  sobre: '/admin/standalone/sobre',
+  dashboard: '/admin/standalone/dashboard',
+};
 
 function App() {
   // === Auth ===
@@ -1202,10 +1215,20 @@ function AppCore({ authedUser, onLogout }) {
           </div>
         </div>
         <nav>
+          <button className={`nav-item ${view === 'inicio' ? 'active' : ''}`} onClick={() => setView('inicio')}>Início</button>
           <button className={`nav-item ${view === 'kanban' ? 'active' : ''}`} onClick={() => setView('kanban')}>Kanban</button>
+          <button className={`nav-item ${view === 'inbox' ? 'active' : ''}`} onClick={() => setView('inbox')}>Inbox</button>
+          <button className={`nav-item ${view === 'leads' ? 'active' : ''}`} onClick={() => setView('leads')}>Leads</button>
+          <button className={`nav-item ${view === 'dashboard' ? 'active' : ''}`} onClick={() => setView('dashboard')}>Dashboard</button>
+          <button className={`nav-item ${view === 'posts' ? 'active' : ''}`} onClick={() => setView('posts')}>Posts</button>
+          <button className={`nav-item ${view === 'roteiros' ? 'active' : ''}`} onClick={() => setView('roteiros')}>Roteiros</button>
+          <button className={`nav-item ${view === 'ideias' ? 'active' : ''}`} onClick={() => setView('ideias')}>Ideias</button>
           <button className={`nav-item ${view === 'cerebro' ? 'active' : ''}`} onClick={() => setView('cerebro')}>Cérebro</button>
-          <button className={`nav-item ${view === 'roteiros' ? 'active' : ''}`} onClick={() => setView('roteiros')}>Arquivos</button>
-          <button className={`nav-item ${view === 'aprovacoes' ? 'active' : ''}`} onClick={() => setView('aprovacoes')}>Aprovações</button>
+          <button className={`nav-item ${view === 'ia' ? 'active' : ''}`} onClick={() => setView('ia')}>Fila IA</button>
+          <button className={`nav-item ${view === 'config' ? 'active' : ''}`} onClick={() => setView('config')}>Configurar</button>
+          <button className={`nav-item ${view === 'comecar' ? 'active' : ''}`} onClick={() => setView('comecar')}>Como Começar</button>
+          <button className={`nav-item ${view === 'sobre' ? 'active' : ''}`} onClick={() => setView('sobre')}>Sobre</button>
+          <button className={`nav-item ${view === 'aprovacoes' ? 'active' : ''}`} onClick={() => setView('aprovacoes')}>Aprovações (LMP)</button>
           <button className={`nav-item ${view === 'calendar' ? 'active' : ''}`} onClick={() => setView('calendar')}>Calendário</button>
           <button className={`nav-item ${view === 'escritorio' ? 'active' : ''}`} onClick={() => setView('escritorio')}>Escritório 3D</button>
           {authedUser?.role === 'admin' && (
@@ -1284,7 +1307,44 @@ function AppCore({ authedUser, onLogout }) {
             <div className="status-badge" style={{ color: 'var(--accent)' }}>LEVI MP.</div>
           </div>
         </header>
-        {view === 'kanban' ? (
+        {view === 'inicio' ? (
+          <div style={{ padding: '40px 50px', overflowY: 'auto' }}>
+            <div style={{ marginBottom: 36 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '2rem', letterSpacing: '-0.03em', textTransform: 'uppercase', background: 'linear-gradient(180deg,#fff,#888)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>O que você quer fazer?</h2>
+              <p style={{ marginTop: 8, color: 'var(--text-3)', fontSize: 12, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600 }}>Atalhos pra cada ferramenta · clique e abre nessa tela</p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
+              {[
+                { id: 'comecar', icon: '→', title: 'Como Começar', desc: 'Wizard de setup em 7 passos. Comece aqui se for tua primeira vez.', highlight: true },
+                { id: 'config', icon: '⚙', title: 'Configurar', desc: 'Define que empresa prospectar (CNAE, UF, porte). Personas de copy.' },
+                { id: 'inbox', icon: '✉', title: 'Inbox', desc: 'Mensagens geradas esperando teu OK. Aprovar, editar, rejeitar.' },
+                { id: 'leads', icon: '◎', title: 'Leads', desc: 'Filtra por status, BANT, UF. Detalhe com conversas e follow-ups.' },
+                { id: 'dashboard', icon: '▤', title: 'Dashboard', desc: 'Métricas do funil, performance por canal, saúde dos agentes.' },
+                { id: 'posts', icon: '◫', title: 'Posts', desc: 'LinkedIn / Instagram gerados pelo Claude Max. Aprovar.' },
+                { id: 'roteiros', icon: '▶', title: 'Roteiros', desc: 'Reels / Shorts / YouTube com gancho, cenas, CTA.' },
+                { id: 'ideias', icon: '✦', title: 'Ideias', desc: 'Banco de ideias / transcrições do Drive pra alimentar conteúdo.' },
+                { id: 'cerebro', icon: '◉', title: 'Cérebro', desc: '7 livros de persuasão (Kahneman, Damásio, Sobral, Clássicos).' },
+                { id: 'ia', icon: '⚡', title: 'Fila IA', desc: 'Tarefas esperando teu worker Claude Max processar localmente.' },
+                { id: 'sobre', icon: '?', title: 'Sobre o sistema', desc: 'O que cada um dos 15 agentes faz. Explicado em português.' },
+                { id: 'escritorio', icon: '◭', title: 'Escritório 3D', desc: 'Visualização espacial dos agentes — agora com dados reais.' },
+              ].map(card => (
+                <button key={card.id} onClick={() => setView(card.id)} style={{
+                  textAlign: 'left', cursor: 'pointer',
+                  background: card.highlight ? 'rgba(255,210,74,0.06)' : 'var(--surface-1)',
+                  border: '1px solid', borderColor: card.highlight ? 'rgba(255,210,74,0.40)' : 'var(--border)',
+                  borderRadius: 8, padding: '26px 28px', color: 'var(--text)',
+                  fontFamily: 'inherit', transition: 'all 0.25s ease', display: 'flex', flexDirection: 'column', minHeight: 170, position: 'relative', overflow: 'hidden'
+                }} onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-hover)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 18px 50px rgba(255,210,74,0.12)'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = card.highlight ? 'rgba(255,210,74,0.40)' : 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                  <div style={{ width: 44, height: 44, border: '1px solid var(--border-hover)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', fontSize: 18, fontWeight: 900, marginBottom: 18, background: 'radial-gradient(circle at 30% 30%, rgba(255,210,74,0.20), transparent 70%)', textShadow: '0 0 12px var(--accent-glow-strong)' }}>{card.icon}</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', letterSpacing: '-0.015em', textTransform: 'uppercase', marginBottom: 8, color: card.highlight ? 'var(--accent)' : 'var(--text)' }}>{card.title}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.55, letterSpacing: '0.02em' }}>{card.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : STANDALONE_VIEWS[view] ? (
+          <iframe src={STANDALONE_VIEWS[view]} style={{ width: '100%', height: '100%', border: 'none', flex: 1, background: 'var(--bg)' }} title={view} />
+        ) : view === 'kanban' ? (
           <div className="kanban-board">
             {COLUMNS.map(col => {
               const colPosts = posts.filter(p => p.status === col.key);
