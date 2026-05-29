@@ -98,37 +98,27 @@ PASTAS_PUBLICAS.forEach(p => {
   if (fs.existsSync(dir)) app.use(`/${p}`, express.static(dir, { maxAge: '7d' }));
 });
 
-// Aliases admin (HTML standalone — ANTES do SPA fallback do React)
-const sendHome = (req, res) => res.sendFile(path.join(__dirname, 'home-admin.html'));
-app.get('/admin', sendHome);
-app.get('/admin/', sendHome);
-app.get('/admin/inbox', (req, res) => res.sendFile(path.join(__dirname, 'inbox.html')));
-app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard-admin.html')));
-app.get('/admin/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads-admin.html')));
-app.get('/admin/config', (req, res) => res.sendFile(path.join(__dirname, 'config-admin.html')));
-app.get('/admin/posts', (req, res) => res.sendFile(path.join(__dirname, 'posts-admin.html')));
-app.get('/admin/roteiros', (req, res) => res.sendFile(path.join(__dirname, 'roteiros-admin.html')));
-app.get('/admin/ideias', (req, res) => res.sendFile(path.join(__dirname, 'ideias-admin.html')));
-app.get('/admin/ia', (req, res) => res.sendFile(path.join(__dirname, 'ia-admin.html')));
-app.get('/admin/comecar', (req, res) => res.sendFile(path.join(__dirname, 'comecar-admin.html')));
-app.get('/admin/cerebro', (req, res) => res.sendFile(path.join(__dirname, 'cerebro-admin.html')));
-app.get('/admin/sobre', (req, res) => res.sendFile(path.join(__dirname, 'sobre-admin.html')));
-app.get('/admin/agente/:nome', (req, res) => res.sendFile(path.join(__dirname, 'agente-admin.html')));
-app.get('/admin/escritorio.html', (req, res) => {
-  const built = path.join(__dirname, 'public/admin/escritorio.html');
-  if (fs.existsSync(built)) return res.sendFile(built);
-  res.sendFile(path.join(__dirname, 'dashboard/public/escritorio.html'));
-});
-
-// Painel React antigo fica em /admin/painel-antigo/ (não é mais a home)
+// Painel admin — dashboard React buildado pelo Vite (public/admin/)
+// VOLTOU a ser a home padrão (Kanban/Cérebro/Arquivos/Aprovações/Calendário/Escritório 3D)
 const adminBuilt = path.join(__dirname, 'public/admin');
 if (fs.existsSync(adminBuilt)) {
-  // Vite buildou com base /admin/ — assets carregam de /admin/assets/...
-  // Mantemos esse path funcionando pro React rodar quando acessado via /admin/painel-antigo/
-  app.use('/admin/assets', express.static(path.join(adminBuilt, 'assets'), { maxAge: 0 }));
-  app.use('/admin/painel-antigo/assets', express.static(path.join(adminBuilt, 'assets'), { maxAge: 0 }));
-  app.use('/admin/painel-antigo', express.static(adminBuilt, { maxAge: 0 }));
-  app.get('/admin/painel-antigo/*', (req, res) => res.sendFile(path.join(adminBuilt, 'index.html')));
+  app.use('/admin', express.static(adminBuilt, { maxAge: 0 }));
+  // SPA: rotas internas do React devolvem index.html
+  // EXCEÇÕES — páginas HTML standalone que tu queres acessar quando precisar:
+  app.get('/admin/standalone/inbox', (req, res) => res.sendFile(path.join(__dirname, 'inbox.html')));
+  app.get('/admin/standalone/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'dashboard-admin.html')));
+  app.get('/admin/standalone/leads', (req, res) => res.sendFile(path.join(__dirname, 'leads-admin.html')));
+  app.get('/admin/standalone/config', (req, res) => res.sendFile(path.join(__dirname, 'config-admin.html')));
+  app.get('/admin/standalone/posts', (req, res) => res.sendFile(path.join(__dirname, 'posts-admin.html')));
+  app.get('/admin/standalone/roteiros', (req, res) => res.sendFile(path.join(__dirname, 'roteiros-admin.html')));
+  app.get('/admin/standalone/ideias', (req, res) => res.sendFile(path.join(__dirname, 'ideias-admin.html')));
+  app.get('/admin/standalone/ia', (req, res) => res.sendFile(path.join(__dirname, 'ia-admin.html')));
+  app.get('/admin/standalone/comecar', (req, res) => res.sendFile(path.join(__dirname, 'comecar-admin.html')));
+  app.get('/admin/standalone/cerebro', (req, res) => res.sendFile(path.join(__dirname, 'cerebro-admin.html')));
+  app.get('/admin/standalone/sobre', (req, res) => res.sendFile(path.join(__dirname, 'sobre-admin.html')));
+  app.get('/admin/standalone/agente/:nome', (req, res) => res.sendFile(path.join(__dirname, 'agente-admin.html')));
+  // SPA fallback — todo /admin/* não pega aqui acima cai pro React
+  app.get('/admin/*', (req, res) => res.sendFile(path.join(adminBuilt, 'index.html')));
 }
 
 // HTML/recursos da raiz (whitelist explícita)
